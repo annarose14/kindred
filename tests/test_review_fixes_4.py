@@ -65,7 +65,7 @@ def test_llm_client_fails_fast():
     import inspect
     from app import llm
     src = inspect.getsource(llm.GroqLLM.__init__)
-    assert "timeout=20.0" in src and "max_retries=1" in src
+    assert "timeout=15.0" in src and "max_retries=0" in src
 
 
 def test_qloo_client_fails_fast_on_network_errors(monkeypatch):

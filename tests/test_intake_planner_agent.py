@@ -16,8 +16,10 @@ def test_empty_note():
     assert intake.parse_note(FakeLLM(), "  hi ")["status"] == "empty"
 
 
-def test_llm_failure_is_handled():
-    assert intake.parse_note(FakeLLM(RuntimeError("down")), NOTE)["status"] == "error"
+def test_llm_failure_falls_back_to_rules():
+    out = intake.parse_note(FakeLLM(RuntimeError("down")), NOTE)
+    assert out["status"] == "ok" and out["reader"] == "rules"
+    assert out["profile"]["suburb"] == "Marrickville"
 
 
 def test_contact_details_removed_before_llm():

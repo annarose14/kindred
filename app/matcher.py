@@ -76,8 +76,9 @@ def clean_label(name):
 
 
 def name_match(label, candidate):
-    """1.0 exact; 0.9 all words present with at most 1 extra; else 0."""
-    a, b = _words(label), _words(candidate)
+    """1.0 exact; 0.9 all words present with at most 1 extra; else 0. A leading "the" is ignored."""
+    a = [w for w in _words(label) if w != "the"]
+    b = [w for w in _words(candidate) if w != "the"]
     if not a or not b:
         return 0.0
     if a == b:
@@ -96,35 +97,29 @@ def tag_fits(label, tag_name):
     return bool(need) and need <= have
 
 
-def resolve_interest(q, interest):
-    """Map {'name','kind'} to a Qloo entity or tag. Returns None if Qloo has no good match.
+UNKNOWN_ORDER = ["artist", "tv_show", "movie", "person", "book"]
 
-    A wrong match is worse than no match, so names must match closely.
-    """
-    name = str(interest.get("name", "")).strip()
-    kind = str(interest.get("kind", "activity")).strip().lower()
-    label = clean_label(name)
-    if not label:
+
+def _entity_lookup(q, label, name, order):
+    best, best_score = None, 0.0
+    for t in order:
+        try:
+            results = q.search(label, types=f"urn:entity:{t}", take=5)
+        except Exception:
+            results = []
+        for r in results:
+            score = name_match(label, r.get("name", ""))
+            if score > best_score:
+                best, best_score = (r, t), score
+        if best_score == 1.0:
+            break
+    if not best:
         return None
+    r, t = best
+    return {"label": name, "matched": r.get("name"), "kind": t, "signal": "entity", "id": r.get("entity_id")}
 
-    if kind in SEARCH_ORDER:
-        best, best_score = None, 0.0
-        for t in SEARCH_ORDER[kind]:
-            try:
-                results = q.search(label, types=f"urn:entity:{t}", take=5)
-            except Exception:
-                results = []
-            for r in results:
-                score = name_match(label, r.get("name", ""))
-                if score > best_score:
-                    best, best_score = (r, t), score
-            if best_score == 1.0:
-                break
-        if best:
-            r, t = best
-            return {"label": name, "matched": r.get("name"), "kind": t,
-                    "signal": "entity", "id": r.get("entity_id")}
 
+def _tag_lookup(q, label, name):
     try:
         tags = q.tags(label, take=15)
     except Exception:
@@ -135,6 +130,29 @@ def resolve_interest(q, interest):
                 return {"label": name, "matched": t.get("name"), "kind": "activity",
                         "signal": "tag", "id": t["id"]}
     return None
+
+
+def resolve_interest(q, interest):
+    """Map {'name','kind'} to a Qloo entity or tag. Returns None if Qloo has no good match.
+
+    A wrong match is worse than no match, so names must match closely.
+    kind "unknown" comes from the backup note reader: one word is tried as a hobby tag first,
+    longer phrases as a named artist, show, film, person or book first.
+    """
+    name = str(interest.get("name", "")).strip()
+    kind = str(interest.get("kind", "activity")).strip().lower()
+    label = clean_label(name)
+    if not label:
+        return None
+    if kind == "unknown":
+        if len(label.split()) == 1:
+            return _tag_lookup(q, label, name) or _entity_lookup(q, label, name, UNKNOWN_ORDER)
+        return _entity_lookup(q, label, name, UNKNOWN_ORDER) or _tag_lookup(q, label, name)
+    if kind in SEARCH_ORDER:
+        found = _entity_lookup(q, label, name, SEARCH_ORDER[kind])
+        if found:
+            return found
+    return _tag_lookup(q, label, name)
 
 
 def resolve_all(q, interests):

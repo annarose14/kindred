@@ -50,7 +50,7 @@ def test_baseline_plan_parsing_and_errors():
                    "group": {"name": "G"}})
     plan = run_eval.baseline_plan(llm, "note")
     assert [s["name"] for s in plan["steps"]] == ["X Park"] and plan["group"]["name"] == "G"
-    assert run_eval.baseline_plan(FakeLLM(RuntimeError("x")), "note") == {"error": "RuntimeError"}
+    assert run_eval.baseline_plan(FakeLLM(RuntimeError("x"), RuntimeError("y")), "note", wait=0) == {"error": "RuntimeError"}
 
 
 def _row(found_flags):

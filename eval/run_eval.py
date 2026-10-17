@@ -1,6 +1,7 @@
 """Kindred vs a plain LLM on the same notes.
 
-Usage (from ~/kindred):  python -m eval.run_eval
+Usage (from ~/kindred):  python -m eval.run_eval          (resumes: keeps notes that already worked)
+                         python -m eval.run_eval --fresh  (redo every note)
 Writes private files to eval/private/ (git ignored, because they contain Qloo data):
   results.json        everything both systems produced, plus automatic checks
   blind_review.html   plans shown as A and B in random order, for a human to judge
@@ -14,6 +15,7 @@ Kindred grounds its choices in Qloo and checks them with code.
 import html
 import json
 import random
+import sys
 import time
 from pathlib import Path
 
@@ -27,6 +29,7 @@ HERE = Path(__file__).resolve().parent
 NEARBY_KM = 15  # Qloo's name search is worldwide; a same-name place further away is a different place.
 PRIVATE = HERE / "private"
 SEED = 2026
+PAUSE = 4  # seconds between notes, to stay under the free model's rate limit
 
 BASELINE_SYSTEM = """You help a social prescribing link worker in Sydney, Australia.
 Read the note about a lonely person and suggest a gentle 3 week plan of 3 specific, REAL,
@@ -38,11 +41,16 @@ Return only JSON:
  "group": {"name": string, "where": string, "when": string, "how_to_join": string}}"""
 
 
-def baseline_plan(llm, note):
-    try:
-        raw = llm.chat_json(BASELINE_SYSTEM, note)
-    except Exception as e:
-        return {"error": type(e).__name__}
+def baseline_plan(llm, note, wait=15):
+    raw = None
+    for attempt in range(2):
+        try:
+            raw = llm.chat_json(BASELINE_SYSTEM, note)
+            break
+        except Exception as e:
+            if attempt == 1:
+                return {"error": type(e).__name__}
+            time.sleep(wait)
     steps = []
     for s in (raw.get("steps") or [])[:3]:
         if isinstance(s, dict) and s.get("place_name"):
@@ -132,8 +140,21 @@ def main():
     q, llm = QlooClient(), GroqLLM()
     rng = random.Random(SEED)
     rows, key = [], {}
+    previous = {}
+    results_file = PRIVATE / "results.json"
+    if "--fresh" not in sys.argv and results_file.exists():
+        for r in json.loads(results_file.read_text()).get("rows", []):
+            if r.get("status") == "ok" and r["kindred"]["steps"] and r["baseline"]["steps"]:
+                previous[r["id"]] = r
 
-    for item in notes:
+    for n, item in enumerate(notes):
+        key[item["id"]] = dict(zip(("A", "B"), rng.sample(["kindred", "baseline"], 2)))
+        if item["id"] in previous:
+            rows.append(previous[item["id"]])
+            print(f"{item['id']}: kept from the last run")
+            continue
+        if n:
+            time.sleep(PAUSE)
         t0 = time.time()
         k = agent.run(item["note"], q, llm)
         base = baseline_plan(llm, item["note"])
@@ -152,10 +173,11 @@ def main():
             "seconds": round(time.time() - t0, 1),
         }
         rows.append(row)
-        key[item["id"]] = dict(zip(("A", "B"), rng.sample(["kindred", "baseline"], 2)))
         kf = sum(c["found"] for c in row["kindred"]["checks"])
         bf = sum(c["found"] for c in row["baseline"]["checks"])
-        print(f"{item['id']}: {row['status']:>8} | Kindred places found {kf}/{len(k_steps)} | "
+        reader = next((t["detail"] for t in k.get("trace", []) if t["step"] == "read_note"), "")
+        row["read_with_rules"] = "backup rules" in reader
+        print(f"{item['id']}: {row['status']:>8}{' (rules)' if row['read_with_rules'] else ''} | Kindred places found {kf}/{len(k_steps)} | "
               f"plain LLM found {bf}/{len(row['baseline']['steps'])} | {row['seconds']}s")
 
     summary = {"kindred": summarise(rows, "kindred"), "baseline": summarise(rows, "baseline")}
