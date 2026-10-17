@@ -135,3 +135,96 @@ def run(note, q, llm, profile_override=None):
     else:
         log("group", "No checked local group nearby fits yet; the worker can add one")
     return {"status": "ok", "profile": profile, "match": match, "plan": plan, "trace": trace}
+
+
+# ---------- follow up: adapt one week after the worker reports back ----------
+TRAVEL_DOWN = {"car": "bus", "bus": "walking", "walking": "walking_short", "walking_short": "walking_short"}
+REASONS = {
+    "too_far": "it was too far",
+    "too_busy": "it felt too busy or loud",
+    "not_their_thing": "it wasn't their kind of place",
+    "not_ready": "they weren't ready yet",
+}
+
+
+def _clean_steps(steps):
+    out = []
+    for s in (steps or [])[:3]:
+        place = s.get("place") if isinstance(s, dict) else None
+        if not isinstance(place, dict) or not place.get("id"):
+            return None
+        out.append(dict(s))
+    return out or None
+
+
+def adapt(q, profile, steps, week, outcome, reason=None):
+    """Update a plan after follow up. Only the reported week changes; nothing is stored."""
+    trace, t0 = [], time.time()
+
+    def log(step, detail):
+        trace.append({"step": step, "detail": detail, "ms": int((time.time() - t0) * 1000)})
+
+    steps = _clean_steps(steps)
+    if not steps or not isinstance(week, int) or not 1 <= week <= len(steps):
+        return {"status": "bad_request", "message": "That week isn't part of this plan."}
+    profile = intake.validate_profile(profile)
+    current = steps[week - 1]["place"]
+
+    if outcome == "went":
+        steps[week - 1] = dict(steps[week - 1], done=True, changed=None)
+        nxt = next((s for s in steps if not s.get("done")), None)
+        message = (f"Week {week} went well. Next: {nxt['place']['name']}." if nxt
+                   else "All three weeks done. This is a good moment to suggest the group.")
+        log("follow_up", f"Week {week} at {current['name']} went well")
+        return {"status": "ok", "steps": steps, "profile": profile, "message": message, "trace": trace}
+
+    if outcome != "not_yet" or reason not in REASONS:
+        return {"status": "bad_request", "message": "Please choose what got in the way."}
+
+    adjusted = dict(profile)
+    max_pressure = current.get("pressure", 2)
+    avoid_category = None
+    if reason == "too_far":
+        adjusted["transport"] = TRAVEL_DOWN.get(profile["transport"], "walking")
+    elif reason == "too_busy":
+        adjusted["strict_calm"] = True
+    elif reason == "not_ready":
+        max_pressure = max(0, max_pressure - 1)
+    elif reason == "not_their_thing":
+        avoid_category = current.get("category")
+    log("follow_up", f"Week {week} didn't happen because {REASONS[reason]}")
+
+    resolved, _ = matcher.resolve_all(q, adjusted.get("interests", []))
+    exclude = {s["place"]["id"] for s in steps}
+    current_km = current.get("distance_km")
+
+    def acceptable(c):
+        if c.get("pressure", 2) > max_pressure or (avoid_category and c["category"] == avoid_category):
+            return False
+        if reason == "too_far" and current_km is not None and c.get("distance_km") is not None:
+            return c["distance_km"] < current_km
+        return True
+
+    found = matcher.find_places(q, adjusted, resolved=resolved, exclude_ids=exclude, limit=20)
+    options = [c for c in found.get("candidates", []) if acceptable(c)]
+    if not options and found.get("suburb"):
+        nearby = matcher.neighbours(found["suburb"], adjusted["transport"])
+        if nearby:
+            found = matcher.find_places(q, adjusted, resolved=resolved, exclude_ids=exclude,
+                                        extra_suburbs=nearby, limit=20)
+            options = [c for c in found.get("candidates", []) if acceptable(c)]
+            log("nearby", f"Also searched {', '.join(n.title() for n in nearby)}")
+
+    if not options:
+        log("adapt", "No better option found; plan kept")
+        return {"status": "ok", "steps": steps, "profile": adjusted, "trace": trace,
+                "message": (f"No better option than {current['name']} nearby yet. "
+                            "It may help to talk through what would make it easier.")}
+
+    best = max(options, key=lambda c: c["score"])
+    steps[week - 1] = {"week": week, "place": best, "action": f"Visit {best['name']} at a quiet time",
+                       "why": planner.explain(best), "done": False,
+                       "changed": {"from": current["name"], "because": REASONS[reason]}}
+    log("adapt", f"Replaced {current['name']} with {best['name']} because {REASONS[reason]}")
+    return {"status": "ok", "steps": steps, "profile": adjusted, "trace": trace,
+            "message": f"Week {week} changed to {best['name']}, because {REASONS[reason]}."}

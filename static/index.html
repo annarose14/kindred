@@ -170,6 +170,23 @@ ol.weeks > li:nth-child(3) { --wk: var(--plum); --wk-soft: var(--plum-soft); --w
 .note { display: inline-block; margin-top: .7rem; font-size: .92rem; font-weight: 700; padding: .15rem .6rem; border-radius: 6px; background: var(--mint-soft); color: var(--mint-ink); }
 .note.warn { background: var(--marigold-soft); color: var(--marigold-ink); }
 
+.follow { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: 1rem;
+  padding-top: .8rem; border-top: 1px dashed var(--line); }
+.follow .label { color: var(--muted); font-size: .95rem; font-weight: 700; margin-right: .2rem; }
+.follow button {
+  font: inherit; font-size: .95rem; font-weight: 700; cursor: pointer; color: var(--ink); background: var(--panel);
+  border: 2px solid var(--line); border-radius: 999px; padding: .3rem .85rem;
+}
+.follow button:hover { border-color: var(--plum); }
+.follow button.yes { border-color: var(--mint); }
+.follow button:disabled { opacity: .6; cursor: progress; }
+.follow .reasons { display: flex; flex-wrap: wrap; gap: .5rem; width: 100%; }
+.badge-done { display: inline-block; margin-left: .5rem; font-size: .9rem; font-weight: 700; padding: .1rem .6rem;
+  border-radius: 999px; background: var(--mint-soft); color: var(--mint-ink); vertical-align: middle; }
+.changed { margin: .2rem 0 .6rem; font-size: .95rem; padding: .35rem .7rem; border-radius: 8px;
+  background: var(--marigold-soft); color: var(--marigold-ink); }
+.update { margin: 1rem 0 0; padding: .8rem 1rem; border-radius: 10px; background: var(--mint-soft); color: var(--mint-ink); font-weight: 700; }
+.update.warn { background: var(--marigold-soft); color: var(--marigold-ink); }
 .group { margin-top: 1.4rem; padding: 1.2rem 1.3rem; border-radius: 12px; background: var(--plum-soft); }
 .group h3 { margin: 0 0 .2rem; font-size: 1rem; color: var(--plum); }
 .group .gname { margin: 0; font-size: 1.4rem; font-weight: 700; }
@@ -212,7 +229,7 @@ details.decided summary { cursor: pointer; padding: 1rem 1.5rem; font-weight: 70
 }
 @media print {
   body { font-size: 11pt; }
-  .topbar, .desk, .tools, details.decided { display: none !important; }
+  .topbar, .desk, .tools, details.decided, .follow, .update { display: none !important; }
   .wrap { display: block; padding: 0; }
   .panel { box-shadow: none; border: 0; padding: 0; }
 }
@@ -276,6 +293,9 @@ details.decided summary { cursor: pointer; padding: 1rem 1.5rem; font-weight: 70
   var $ = function (s) { return document.querySelector(s); };
   var form = $("#form"), note = $("#note"), go = $("#go"), result = $("#result"), samplesEl = $("#samples");
   var lastPlanText = "";
+  var current = null;  // the plan on screen; kept only in this page, never stored on the server
+  var REASONS = [["too_far", "Too far"], ["too_busy", "Too busy or loud"],
+                 ["not_their_thing", "Not their kind of place"], ["not_ready", "Not ready yet"]];
 
   // ---------- theme switch ----------
   var themeBtn = $("#theme");
@@ -347,7 +367,54 @@ details.decided summary { cursor: pointer; padding: 1rem 1.5rem; font-weight: 70
     result.replaceChildren(el("article", { cls: "panel reveal" }, [box]));
   }
 
-  function renderPlan(data) {
+  function followUp(s) {
+    if (s.done) return null;
+    var box = el("div", { cls: "follow", role: "group", "aria-label": "Follow up for week " + s.week });
+    var yes = el("button", { type: "button", cls: "yes", text: "It went well" });
+    var no = el("button", { type: "button", text: "Didn't happen", "aria-expanded": "false" });
+    yes.addEventListener("click", function () { adapt(s.week, "went", null, box); });
+    no.addEventListener("click", function () {
+      if (box.querySelector(".reasons")) return;
+      no.setAttribute("aria-expanded", "true");
+      var reasons = el("div", { cls: "reasons" }, [el("span", { cls: "label", text: "What got in the way?" })]);
+      REASONS.forEach(function (r) {
+        var b = el("button", { type: "button", text: r[1] });
+        b.addEventListener("click", function () { adapt(s.week, "not_yet", r[0], box); });
+        reasons.appendChild(b);
+      });
+      box.appendChild(reasons);
+      reasons.querySelector("button").focus();
+    });
+    box.appendChild(el("span", { cls: "label", text: "After this week:" }));
+    box.appendChild(yes); box.appendChild(no);
+    return box;
+  }
+
+  function adapt(week, outcome, reason, box) {
+    box.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+    fetch("/api/adapt", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile: current.profile, steps: current.plan.steps, week: week, outcome: outcome, reason: reason }) })
+      .then(function (r) { return r.json().catch(function () { return { status: "unavailable" }; }); })
+      .then(function (res) {
+        if (res.status !== "ok") {
+          current.update = { text: res.message || "That didn't work. Please try again.", warn: true };
+        } else {
+          current.plan.steps = res.steps;
+          current.profile = res.profile || current.profile;
+          var offset = current.trace.length ? current.trace[current.trace.length - 1].ms : 0;
+          (res.trace || []).forEach(function (t) { current.trace.push({ step: t.step, detail: t.detail, ms: offset + t.ms }); });
+          current.update = { text: res.message, warn: false };
+        }
+        renderPlan(current, week);
+      })
+      .catch(function () {
+        current.update = { text: "Kindred couldn't be reached. Check your connection and try again.", warn: true };
+        renderPlan(current, week);
+      });
+  }
+
+  function renderPlan(data, focusWeek) {
+    current = data;
     var p = data.profile, plan = data.plan, m = data.match;
     var today = new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
     var who = [AGE[p.age_band], p.suburb, "travels by " + (TRAVEL[p.transport] || p.transport)].filter(Boolean).join(", ");
@@ -372,18 +439,22 @@ details.decided summary { cursor: pointer; padding: 1rem 1.5rem; font-weight: 70
         var warn = n.indexOf("phone ahead") >= 0;
         return el("span", { cls: "note" + (warn ? " warn" : ""), text: warn ? "Access not listed: phone ahead" : "Accessibility listed" });
       });
-      weeks.appendChild(el("li", null, [
+      var title = el("h3", { cls: "place", text: pl.name });
+      if (s.done) title.appendChild(el("span", { cls: "badge-done", text: "Done" }));
+      weeks.appendChild(el("li", { id: "week-" + s.week, tabindex: "-1" }, [
         el("p", { cls: "wk", text: "Week " + s.week }),
-        el("h3", { cls: "place", text: pl.name }),
+        title,
+        s.changed ? el("p", { cls: "changed", text: "Changed from " + s.changed.from + " because " + s.changed.because + "." }) : null,
         el("p", { cls: "meta", text: meta }),
         el("p", { cls: "action", text: s.action }),
         el("p", { cls: "why" }, [el("b", { text: "Why: " }), s.why])
-      ].concat(noteEls)));
+      ].concat(noteEls, [followUp(s)])));
       lines.push("Week " + s.week + ": " + pl.name + " (" + meta + ")", "  " + s.action, "  Why: " + s.why);
     });
 
     var kids = [head, chips];
     if (plan.summary) kids.push(el("p", { cls: "summary", text: plan.summary }));
+    if (data.update) kids.push(el("p", { cls: "update" + (data.update.warn ? " warn" : ""), role: "status", text: data.update.text }));
     kids.push(weeks);
 
     var g = plan.group;
@@ -418,8 +489,11 @@ details.decided summary { cursor: pointer; padding: 1rem 1.5rem; font-weight: 70
     kids.push(el("div", { cls: "tools" }, [printBtn, copyBtn]));
     lastPlanText = lines.join("\n");
 
-    result.replaceChildren(el("article", { cls: "panel slip reveal", tabindex: "-1", id: "slip" }, kids), decided(data));
-    document.getElementById("slip").focus();
+    var keepOpen = !!(focusWeek && document.querySelector("details.decided[open]"));
+    result.replaceChildren(el("article", { cls: "panel slip" + (focusWeek ? "" : " reveal"), tabindex: "-1", id: "slip" }, kids), decided(data));
+    if (keepOpen) document.querySelector("details.decided").setAttribute("open", "");
+    var target = focusWeek ? document.getElementById("week-" + focusWeek) : document.getElementById("slip");
+    if (target) target.focus();
   }
 
   function decided(data) {

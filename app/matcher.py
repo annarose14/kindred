@@ -229,7 +229,7 @@ def neighbours(suburb, transport, n=2):
     return [name for d, name in near if d <= reach][:n]
 
 
-def find_places(q, profile, resolved=None, limit=8, extra_suburbs=()):
+def find_places(q, profile, resolved=None, limit=8, extra_suburbs=(), exclude_ids=()):
     """Main matching step. Returns dict with candidates, excluded summary and interest mapping."""
     suburb, origin = find_suburb(profile.get("suburb"))
     if suburb is None:
@@ -257,7 +257,10 @@ def find_places(q, profile, resolved=None, limit=8, extra_suburbs=()):
             hits.setdefault(pid, []).append((r, rank))
 
     candidates, excluded = [], {}
+    exclude_ids = set(exclude_ids)
     for pid, (p, cat) in places.items():
+        if pid in exclude_ids:
+            continue
         own = safety.category_ids(p)
         if own and cat not in own:
             excluded["wrong type"] = excluded.get("wrong type", 0) + 1

@@ -144,7 +144,8 @@ def check_place(place, profile, origin):
         reasons.append("not a place to visit")
     if profile.get("avoid_alcohol", True) and alcohol_level(place) == 2:
         reasons.append("alcohol focused")
-    if profile.get("prefers_calm", True) and loudness(place) >= 2:
+    loud_limit = 1 if profile.get("strict_calm") else 2
+    if profile.get("prefers_calm", True) and loudness(place) >= loud_limit:
         reasons.append("too loud")
     if is_too_physical(place, profile):
         reasons.append("too physical")

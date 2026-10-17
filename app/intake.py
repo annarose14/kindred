@@ -74,6 +74,7 @@ def validate_profile(raw):
         "needs_step_free": bool(raw.get("needs_step_free", False)),
         "avoid_alcohol": raw.get("avoid_alcohol", True) is not False,
         "prefers_calm": raw.get("prefers_calm", True) is not False,
+        "strict_calm": raw.get("strict_calm") is True,
         "goal": str(raw.get("goal") or "feel more connected")[:120],
     }
 

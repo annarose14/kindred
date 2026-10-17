@@ -38,6 +38,14 @@ class PlanRequest(BaseModel):
     note: str = ""
 
 
+class AdaptRequest(BaseModel):
+    profile: dict = {}
+    steps: list = []
+    week: int = 0
+    outcome: str = ""
+    reason: str | None = None
+
+
 def _git_commit():
     sha = os.getenv("RENDER_GIT_COMMIT") or os.getenv("GIT_COMMIT")
     if sha:
@@ -118,6 +126,27 @@ def create_app(qloo=None, llm=None):
                 "message": "Kindred can't reach its data services right now. Please try again shortly.",
                 "error_type": type(e).__name__})
         application.state.stats["plans"] += 1
+        return result
+
+    @application.post("/api/adapt")
+    def adapt(body: AdaptRequest, request: Request):
+        ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "?")
+        if rate_limited(ip.split(",")[0].strip()):
+            return JSONResponse(status_code=429, content={
+                "status": "rate_limited",
+                "message": "That's a lot of changes in a short time. Please wait a few minutes and try again."})
+        if len(str(body.steps)) > 20000:
+            return JSONResponse(status_code=400, content={"status": "too_long", "message": "Plan is too large."})
+        try:
+            q, _llm = clients()
+            result = agent.adapt(q, body.profile, body.steps, body.week, body.outcome, body.reason)
+        except Exception as e:
+            return JSONResponse(status_code=503, content={
+                "status": "unavailable",
+                "message": "Kindred can't reach its data services right now. Please try again shortly.",
+                "error_type": type(e).__name__})
+        if result.get("status") == "bad_request":
+            return JSONResponse(status_code=400, content=result)
         return result
 
     if STATIC.exists():

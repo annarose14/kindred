@@ -94,18 +94,22 @@ def validate_plan(raw, candidates):
 
 
 def fallback_plan(candidates, reason=""):
-    ordered = sorted(candidates, key=lambda c: (c.get("pressure", 2), -c["score"]))
-    chosen, seen = [], set()
-    for c in ordered:  # first pass: different kinds of place
-        if c["category"] not in seen:
-            seen.add(c["category"])
-            chosen.append(c)
-    for c in ordered:  # second pass: fill up to 3 if needed
-        if len(chosen) >= 3:
-            break
-        if c not in chosen:
-            chosen.append(c)
-    chosen = sorted(chosen[:3], key=lambda c: (c.get("pressure", 2), -c["score"]))
+    """Week 1 quietest, week 3 most social, week 2 in between; different kinds of place when possible."""
+    by_quiet = sorted(candidates, key=lambda c: (c.get("pressure", 2), -c["score"]))
+    by_social = sorted(candidates, key=lambda c: (-c.get("pressure", 2), -c["score"]))
+    chosen = []
+    if by_quiet:
+        chosen.append(by_quiet[0])
+    social = next((c for c in by_social if c not in chosen and c["category"] != chosen[0]["category"]), None) \
+        or next((c for c in by_social if c not in chosen), None)
+    if social:
+        chosen.append(social)
+    used = {c["category"] for c in chosen}
+    middle = next((c for c in by_quiet if c not in chosen and c["category"] not in used), None) \
+        or next((c for c in by_quiet if c not in chosen), None)
+    if middle:
+        chosen.append(middle)
+    chosen = sorted(chosen, key=lambda c: (c.get("pressure", 2), -c["score"]))
     steps = [{"week": i + 1, "place": c, "action": f"Visit {c['name']} at a quiet time",
               "why": explain(c)} for i, c in enumerate(chosen)]
     return {"summary": "Gentle first steps, quietest place first.", "steps": steps,
