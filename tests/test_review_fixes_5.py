@@ -79,7 +79,8 @@ def test_at_most_two_food_places_and_civic_first():
 
 # 6. shops and services
 @pytest.mark.parametrize("name", ["Woolworths Park Sydney", "Coles Marrickville", "Priceline Pharmacy",
-                                  "Corner Chemist", "Newtown Bottle Shop"])
+                                  "Corner Chemist", "Newtown Bottle Shop", "McDonald's Kingsford",
+                                  "KFC Randwick", "Subway Newtown", "UNSW Bookshop"])
 def test_shops_are_not_social_venues(name):
     assert "not a social venue" in safety.check_place(place("x", name, "cafe"), PROFILE, MARRICKVILLE)[1]
 
@@ -109,3 +110,8 @@ def test_same_category_cap_never_makes_a_short_plan():
     parks = [place(f"P{i}", f"Park {i}", "park", tags=["Quiet"]) for i in range(4)]
     out = matcher.find_places(FakeQloo(by_category={"park": parks}), PROFILE)
     assert len(out["candidates"]) == 3
+
+
+@pytest.mark.parametrize("name", ["Subwaye Cafe", "Kfcafe", "Newtown Library", "Bourke Street Bakery"])
+def test_ordinary_places_still_allowed(name):
+    assert "not a social venue" not in safety.check_place(place("x", name, "cafe"), PROFILE, MARRICKVILLE)[1]
