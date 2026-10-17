@@ -14,7 +14,8 @@ class LLMError(Exception):
 class GroqLLM:
     def __init__(self, api_key=None, model=None):
         from groq import Groq
-        self.client = Groq(api_key=api_key or os.getenv("GROQ_API_KEY"))
+        # Fail fast: a slow model call must not keep a link worker (or a judge) waiting.
+        self.client = Groq(api_key=api_key or os.getenv("GROQ_API_KEY"), timeout=20.0, max_retries=1)
         self.model = model or os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
     def chat_json(self, system, user):

@@ -13,10 +13,12 @@ from app.suburbs import find_suburb
 MIN_CANDIDATES = 3
 WIDER = {"walking_short": "walking", "walking": "bus", "bus": "car"}
 
-ALT_SYSTEM = """Qloo's taste database did not recognise an interest. Suggest up to 3 specific,
-very well known examples that represent it, so it can be searched by name.
+ALT_SYSTEM = """Qloo's taste database did not recognise an interest. Suggest up to 3 very famous,
+mainstream films, TV shows, books or artists that people with this interest typically love, so they
+can be searched by exact title. Prefer household names over niche ones.
 Examples: a film studio -> its most famous films; a genre -> its best known artists;
-a TV channel -> its best known shows. Return only JSON:
+a hobby like model trains -> "Thomas & Friends" (tv_show), "The Polar Express" (movie).
+Return only JSON:
 {"alternatives": [{"name": string, "kind": "artist"|"movie"|"tv_show"|"book"|"person"|"activity"}]}"""
 
 MESSAGES = {
@@ -102,6 +104,16 @@ def run(note, q, llm, profile_override=None):
             match = retry
             match["widened_to"] = wider["transport"]
             log("widen", f"Too few matches, widened travel to '{wider['transport']}'")
+
+    if len(match["candidates"]) < MIN_CANDIDATES:
+        nearby = matcher.neighbours(match.get("suburb"), match.get("widened_to") or profile["transport"])
+        if nearby:
+            travel = dict(profile, transport=match.get("widened_to") or profile["transport"])
+            retry = matcher.find_places(q, travel, resolved=resolved, extra_suburbs=nearby)
+            if len(retry.get("candidates", [])) > len(match["candidates"]):
+                retry["widened_to"] = match.get("widened_to")
+                match = retry
+                log("nearby", f"Few matches in {profile['suburb']}; also searched {', '.join(n.title() for n in nearby)}")
 
     if not match["candidates"]:
         return {"status": "no_places", "message": MESSAGES["no_places"], "profile": profile,

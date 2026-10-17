@@ -82,6 +82,8 @@ def name_match(label, candidate):
         return 0.0
     if a == b:
         return 1.0
+    if len(a) == 1:
+        return 0.0  # one word like "documentaries" must not become "CNBC Documentaries"
     if set(a) <= set(b) and len(b) - len(a) <= 1:
         return 0.9
     return 0.0
@@ -198,7 +200,18 @@ def place_feel(place):
     return out
 
 
-def find_places(q, profile, resolved=None, limit=8):
+def neighbours(suburb, transport, n=2):
+    """Nearest other pilot suburbs the person could reach, nearest first."""
+    from app.suburbs import SUBURBS
+    home = SUBURBS.get(suburb)
+    if not home:
+        return []
+    reach = max(safety.MAX_KM.get(transport, 5.0), 2.5)
+    near = sorted((safety.haversine_km(*home, *loc), name) for name, loc in SUBURBS.items() if name != suburb)
+    return [name for d, name in near if d <= reach][:n]
+
+
+def find_places(q, profile, resolved=None, limit=8, extra_suburbs=()):
     """Main matching step. Returns dict with candidates, excluded summary and interest mapping."""
     suburb, origin = find_suburb(profile.get("suburb"))
     if suburb is None:
@@ -210,13 +223,14 @@ def find_places(q, profile, resolved=None, limit=8):
         return {"error": "no_interests_found", "candidates": [], "excluded": {}, "interests": []}
 
     cats = categories_for(q)
-    jobs = [(r, c) for r in resolved for c in cats]
+    search_in = [suburb] + [x for x in extra_suburbs if x != suburb]
+    jobs = [(r, c, where) for where in search_in for r in resolved for c in cats]
     with ThreadPoolExecutor(max_workers=8) as pool:
         results = list(pool.map(
-            lambda job: _query(q, job[0], job[1], suburb, profile.get("age_band")), jobs))
+            lambda job: _query(q, job[0], job[1], job[2], profile.get("age_band")), jobs))
 
     places, hits = {}, {}
-    for (r, cat), found in zip(jobs, results):
+    for (r, cat, _where), found in zip(jobs, results):
         for rank, p in enumerate(found):
             pid = p.get("entity_id")
             if not pid:

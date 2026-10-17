@@ -94,14 +94,18 @@ def validate_plan(raw, candidates):
 
 
 def fallback_plan(candidates, reason=""):
+    ordered = sorted(candidates, key=lambda c: (c.get("pressure", 2), -c["score"]))
     chosen, seen = [], set()
-    for c in sorted(candidates, key=lambda c: (c.get("pressure", 2), -c["score"])):
-        if c["category"] in seen:
-            continue
-        seen.add(c["category"])
-        chosen.append(c)
-        if len(chosen) == 3:
+    for c in ordered:  # first pass: different kinds of place
+        if c["category"] not in seen:
+            seen.add(c["category"])
+            chosen.append(c)
+    for c in ordered:  # second pass: fill up to 3 if needed
+        if len(chosen) >= 3:
             break
+        if c not in chosen:
+            chosen.append(c)
+    chosen = sorted(chosen[:3], key=lambda c: (c.get("pressure", 2), -c["score"]))
     steps = [{"week": i + 1, "place": c, "action": f"Visit {c['name']} at a quiet time",
               "why": explain(c)} for i, c in enumerate(chosen)]
     return {"summary": "Gentle first steps, quietest place first.", "steps": steps,
