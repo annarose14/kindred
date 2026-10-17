@@ -11,14 +11,15 @@ from app import groups, intake, matcher, planner
 from app.suburbs import find_suburb
 
 MIN_CANDIDATES = 3
+# Only named films, shows, books, artists and people are retried through well known examples.
+# Hobbies are never swapped for a loosely related title (no "birdwatching" -> "The Birds").
+MEDIA_KINDS = {"artist", "movie", "tv_show", "book", "person", "podcast"}
 WIDER = {"walking_short": "walking", "walking": "bus", "bus": "car"}
 
-ALT_SYSTEM = """Qloo's taste database did not recognise an interest. Suggest up to 3 very famous,
-mainstream films, TV shows, books or artists that people with this interest typically love, so they
-can be searched by exact title. Prefer household names over niche ones.
-Examples: a film studio -> its most famous films; a genre -> its best known artists;
-a hobby like model trains -> "Thomas & Friends" (tv_show), "The Polar Express" (movie).
-Return only JSON:
+ALT_SYSTEM = """Qloo's taste database did not recognise a named film studio, series, author, band or
+artist. Suggest up to 3 of its most famous works or members so they can be searched by exact title.
+Examples: "Studio Ghibli" -> "Spirited Away" (movie); "Pixar" -> "Toy Story" (movie).
+Only give works that ARE the thing named, never something merely similar. Return only JSON:
 {"alternatives": [{"name": string, "kind": "artist"|"movie"|"tv_show"|"book"|"person"|"activity"}]}"""
 
 MESSAGES = {
@@ -83,6 +84,9 @@ def run(note, q, llm, profile_override=None):
     for i in resolved:
         log("understand", f"'{i['label']}' -> Qloo {i['signal']} '{i['matched']}'")
     for interest in unresolved:
+        if interest.get("kind") not in MEDIA_KINDS:
+            log("retry", f"Qloo didn't know '{interest['name']}' as a hobby; skipped rather than guessed")
+            continue
         r, tried = retry_with_examples(q, llm, interest)
         if r:
             resolved.append(r)

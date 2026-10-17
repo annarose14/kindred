@@ -118,7 +118,9 @@ def blind_page(rows, key):
              "<h1>Blind review: which plan would you give this person?</h1>",
              "<p>For each note, read plan A and plan B. Without searching which system made which, "
              "write in <b>eval/private/ratings.csv</b>: note id, A or B or tie, and a few words why. "
-             "Judge on: fits what they love, safe and calm, realistic to reach, specific enough to act on.</p>"]
+             "Judge on: fits what they love, safe and calm, realistic to reach, specific enough to act on. "
+             "Whether each place really exists is measured separately by the automatic checks, so judge "
+             "the plan as written.</p>"]
     for r in rows:
         nid = r["id"]
         sides = {key[nid]["A"]: "A", key[nid]["B"]: "B"}

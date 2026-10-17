@@ -110,6 +110,7 @@ GROUPS = [
     },
     {
         "id": "g_iw_library_clubs",
+        "audience": "seniors",
         "name": "Inner West Libraries adult programs",
         "suburb": "Marrickville",
         "where": "Inner West library branches",
@@ -124,6 +125,7 @@ GROUPS = [
     },
     {
         "id": "g_st_peters_gathering",
+        "audience": "seniors",
         "name": "St Peters Gathering",
         "suburb": "St Peters",
         "where": "St Peters Town Hall",
@@ -136,6 +138,7 @@ GROUPS = [
     },
     {
         "id": "g_randwick_knit",
+        "audience": "seniors",
         "name": "The Knit-in Group",
         "suburb": "Randwick",
         "where": "Margaret Martin Library, Randwick",
@@ -147,6 +150,7 @@ GROUPS = [
     },
     {
         "id": "g_randwick_ukulele",
+        "audience": "seniors",
         "name": "Ukulele Strumming Club",
         "suburb": "Maroubra",
         "where": "Lionel Bowen Library, Maroubra",
@@ -159,6 +163,7 @@ GROUPS = [
     },
     {
         "id": "g_randwick_coffee",
+        "audience": "seniors",
         "name": "Coffee Conversations Connect",
         "suburb": "Maroubra",
         "where": "Lionel Bowen Library, Maroubra",
@@ -171,6 +176,7 @@ GROUPS = [
     },
     {
         "id": "g_randwick_table_tennis",
+        "audience": "seniors",
         "name": "Table Tennis For Fun",
         "suburb": "Maroubra",
         "where": "Lionel Bowen Library, Maroubra",
@@ -212,7 +218,10 @@ def match_group(profile, interests, origin):
     """
     limit = GROUP_MAX_KM.get(profile.get("transport", "bus"), 7.0)
     best = None
+    older = profile.get("age_band") == "55_and_older"
     for g in GROUPS:
+        if g.get("audience") == "seniors" and not older:
+            continue  # listed on council seniors pages
         spots = g.get("locations") or [g["location"]]
         dist = min(safety.haversine_km(origin[0], origin[1], *loc) for loc in spots) if origin else None
         if dist is not None and dist > limit:
@@ -236,6 +245,6 @@ def match_group(profile, interests, origin):
     if not best:
         return None
     _, g, reason, dist = best
-    return dict({k: v for k, v in g.items() if k not in ("keywords", "media_kinds", "general", "location", "locations")},
+    return dict({k: v for k, v in g.items() if k not in ("keywords", "media_kinds", "general", "location", "locations", "audience")},
                 reason=reason, distance_km=round(dist, 1) if dist is not None else None,
                 checked=CHECKED)

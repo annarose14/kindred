@@ -13,7 +13,8 @@ CLAIM_WORDS = re.compile(
 
 SYSTEM = """You help a social prescribing link worker plan gentle first steps for a lonely person.
 Choose 3 places from the candidate list by "id" and order them by "pressure" from lowest
-(week 1, quiet and solo) to highest (week 3, where people gather). Prefer 3 different categories.
+(week 1, quiet and solo) to highest (week 3, where people gather). Prefer 3 different kinds of
+place, and use at most one cafe, bakery or tea house unless there is no other choice.
 Never invent places.
 For each step write one short "action" (under 20 words) about simply visiting the place,
 e.g. "Short walk around the gardens on a weekday morning". Do NOT claim the place runs groups,
@@ -93,6 +94,13 @@ def validate_plan(raw, candidates):
     }, "ok"
 
 
+FOOD = {"Cafe", "Bakery", "Tea house"}
+
+
+def _kind(c):
+    return "Food" if c.get("category") in FOOD else c.get("category")
+
+
 def fallback_plan(candidates, reason=""):
     """Week 1 quietest, week 3 most social, week 2 in between; different kinds of place when possible."""
     by_quiet = sorted(candidates, key=lambda c: (c.get("pressure", 2), -c["score"]))
@@ -100,12 +108,12 @@ def fallback_plan(candidates, reason=""):
     chosen = []
     if by_quiet:
         chosen.append(by_quiet[0])
-    social = next((c for c in by_social if c not in chosen and c["category"] != chosen[0]["category"]), None) \
+    social = next((c for c in by_social if c not in chosen and _kind(c) != _kind(chosen[0])), None) \
         or next((c for c in by_social if c not in chosen), None)
     if social:
         chosen.append(social)
-    used = {c["category"] for c in chosen}
-    middle = next((c for c in by_quiet if c not in chosen and c["category"] not in used), None) \
+    used = {_kind(c) for c in chosen}
+    middle = next((c for c in by_quiet if c not in chosen and _kind(c) not in used), None) \
         or next((c for c in by_quiet if c not in chosen), None)
     if middle:
         chosen.append(middle)

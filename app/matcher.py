@@ -1,4 +1,5 @@
 """Turn a patient's interests into taste matched, safe, nearby places using Qloo."""
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 
 from app import safety
@@ -39,10 +40,20 @@ TAG_PREFERENCE = [
 ]
 AGE_BANDS = {"35_and_younger", "36_to_55", "55_and_older"}
 MAX_PER_CATEGORY = 2
+# Social prescribing usually works through libraries, parks, gardens and community centres,
+# so these get a small boost, and food places (cafe, bakery, tea house) are capped at two.
+CIVIC = {"Library", "Park", "Garden", "Community centre", "Community garden", "Seniors centre", "Cultural centre"}
+FOOD = {"Cafe", "Bakery", "Tea house"}
+CIVIC_BONUS = 0.12
+MAX_FOOD = 2
 FEEL_TYPES = {"urn:tag:ambience:qloo", "urn:tag:setting:qloo"}
 AMENITY_TYPES = {"urn:tag:amenity:qloo", "urn:tag:amenities:place"}
 USEFUL_AMENITIES = ("bench", "shade", "seating", "garden", "trees", "lawn", "water view",
-                    "quiet room", "toilet", "restroom", "lift", "ramp")
+                    "quiet room", "lift", "ramp")
+# Words that sound odd or unhelpful on a social prescription.
+FEEL_BLOCK = ("restroom", "toilet", "commercial", "efficient", "premium", "roadside", "gastronomic",
+              "indulgent", "lively", "buzzing", "trendy", "upscale", "expensive", "city center", "central",
+              "gender", "credit", "parking", "wifi", "takeout", "delivery", "catering", "gift")
 FEEL_NOISE = {"place", "safe", "credit cards", "takeout", "delivery", "catering services",
               "gift wrapping", "parking", "wifi", "free wifi"}
 
@@ -61,12 +72,35 @@ SEARCH_ORDER = {
 }
 
 
-def _stems(text):
-    return {w[:5] for w in str(text).lower().replace("-", " ").split() if len(w) >= 4}
+STOP = {"with", "from", "into", "your", "this", "that", "and", "the", "for", "of", "on", "in", "a", "an",
+        "to", "at", "by", "their", "about", "or", "its"}
+SUFFIXES = ("ings", "ing", "ers", "er", "es", "ed", "s", "e")
+
+
+def _plain(text):
+    """Lower case without accents: "André Rieu" -> "andre rieu"."""
+    text = unicodedata.normalize("NFKD", str(text).lower())
+    return "".join(ch for ch in text if not unicodedata.combining(ch))
 
 
 def _words(text):
-    return "".join(ch if ch.isalnum() or ch == " " else " " for ch in str(text).lower()).split()
+    return "".join(ch if ch.isalnum() or ch == " " else " " for ch in _plain(text)).split()
+
+
+def _stem(word):
+    for suf in SUFFIXES:
+        if word.endswith(suf) and len(word) - len(suf) >= 3:
+            return word[: -len(suf)]
+    return word
+
+
+def _stems(text):
+    """Meaningful word stems: gardening ~ garden, but wheel != wheelchair and "with" is ignored."""
+    return {_stem(w) for w in _words(text) if w not in STOP and len(w) >= 3}
+
+
+def _joined(text):
+    return _stem("".join(w for w in _words(text) if w not in STOP))
 
 
 def clean_label(name):
@@ -91,10 +125,13 @@ def name_match(label, candidate):
 
 
 def tag_fits(label, tag_name):
-    """Every meaningful word of the interest must appear in the tag ("studio ghibli" != "yoga studio")."""
-    need = _stems(label) or {w for w in _words(label)}
-    have = _stems(tag_name) | set(_words(tag_name))
-    return bool(need) and need <= have
+    """Every meaningful word of the interest must appear in the tag ("studio ghibli" != "yoga studio").
+    Joined spellings count: "birdwatching" fits "Bird watching"."""
+    need = _stems(label)
+    have = _stems(tag_name)
+    if need and need <= have:
+        return True
+    return bool(need) and _joined(label) == _joined(tag_name)
 
 
 UNKNOWN_ORDER = ["artist", "tv_show", "movie", "person", "book"]
@@ -119,16 +156,29 @@ def _entity_lookup(q, label, name, order):
     return {"label": name, "matched": r.get("name"), "kind": t, "signal": "entity", "id": r.get("entity_id")}
 
 
+def tag_variants(label):
+    """Ways to look a hobby up: as written, joined ("bird watching"), then its main noun
+    ("ballroom dancing" -> "dancing"). Never a loose association like a TV show."""
+    words = [w for w in label.split() if w not in STOP]
+    out = [label]
+    if len(words) > 1:
+        out += ["".join(words), words[-1]]
+    elif words and len(words[0]) > 6:
+        out.append(words[0])
+    return list(dict.fromkeys(v for v in out if v))
+
+
 def _tag_lookup(q, label, name):
-    try:
-        tags = q.tags(label, take=15)
-    except Exception:
-        tags = []
-    for prefix in TAG_PREFERENCE:
-        for t in tags:
-            if str(t.get("id", "")).startswith(prefix) and tag_fits(label, t.get("name", "")):
-                return {"label": name, "matched": t.get("name"), "kind": "activity",
-                        "signal": "tag", "id": t["id"]}
+    for variant in tag_variants(label):
+        try:
+            tags = q.tags(variant, take=15)
+        except Exception:
+            tags = []
+        for prefix in TAG_PREFERENCE:
+            for t in tags:
+                if str(t.get("id", "")).startswith(prefix) and tag_fits(variant, t.get("name", "")):
+                    return {"label": name, "matched": t.get("name"), "kind": "activity",
+                            "signal": "tag", "id": t["id"]}
     return None
 
 
@@ -209,7 +259,7 @@ def place_feel(place):
         useful = t.get("type") in AMENITY_TYPES and any(w in low for w in USEFUL_AMENITIES)
         if (t.get("type") not in FEEL_TYPES and not useful) or low in FEEL_NOISE:
             continue
-        if any(w in low for w in safety.LOUD_TAG_WORDS + safety.ALCOHOL_TAG_WORDS):
+        if any(w in low for w in safety.LOUD_TAG_WORDS + safety.ALCOHOL_TAG_WORDS + FEEL_BLOCK):
             continue
         if n not in out:
             out.append(n)
@@ -285,7 +335,7 @@ def find_places(q, profile, resolved=None, limit=8, extra_suburbs=(), exclude_id
         for r in resolved:
             stems = _stems(r["label"])
             for tn in tnames:
-                if stems & _stems(tn):
+                if stems & _stems(tn) or (len(stems) == 1 and _joined(r["label"]) == _joined(tn)):
                     score += 0.3
                     evidence.append(f"Tagged \"{tn}\", which fits {r['label']}")
                     break
@@ -297,6 +347,8 @@ def find_places(q, profile, resolved=None, limit=8, extra_suburbs=(), exclude_id
         dist = safety.distance_km(p, origin)
         if dist is not None:
             score -= 0.05 * dist
+        if cats[cat]["label"] in CIVIC:
+            score += CIVIC_BONUS
         if not p.get("popularity"):
             score -= 0.1  # little data about this place, prefer better known ones
 
@@ -321,9 +373,14 @@ def find_places(q, profile, resolved=None, limit=8, extra_suburbs=(), exclude_id
 
     candidates.sort(key=lambda c: (-c["score"], c["name"] or ""))
     picked, per_cat = [], {}
+    food = 0
     for c in candidates:
         if per_cat.get(c["category"], 0) >= MAX_PER_CATEGORY:
             continue
+        if c["category"] in FOOD:
+            if food >= MAX_FOOD:
+                continue
+            food += 1
         per_cat[c["category"]] = per_cat.get(c["category"], 0) + 1
         picked.append(c)
         if len(picked) >= limit:

@@ -22,7 +22,9 @@ SPECIALIST_WORDS = ("asylum", "refugee", "faculty", "university", "college", "sc
                     "rehab", "centrelink", "headquarters", "office")
 # Places that are never a good social prescription: gambling, tattoo, vape and adult venues.
 UNSUITABLE_WORDS = ("tattoo", "piercing", "vape", "tobacco", "smoke shop", "casino", "pokies",
-                    "betting", "tab", "bookmaker", "adult", "sex shop", "pawn")
+                    "betting", "tab", "bookmaker", "adult", "sex shop", "pawn",
+                    "woolworths", "coles", "aldi", "supermarket", "7-eleven", "petrol", "service station",
+                    "pharmacy", "chemist", "drug store", "bottle shop", "bottle-o")
 UNSUITABLE_CATEGORIES = {"tattoo_shop", "tattoo_parlor", "casino", "betting_shop", "gambling",
                          "vape_shop", "tobacco_shop", "adult_entertainment", "pawn_shop"}
 # Businesses you can't actually visit and sit in.
