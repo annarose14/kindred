@@ -100,3 +100,31 @@ class BranchQloo(FakeQloo):
 def test_verify_uses_nearest_branch_of_a_chain():
     c = run_eval.verify_place(BranchQloo(), "Chain Cafe", "Marrickville", MARRICKVILLE, PROFILE)
     assert c["found"] and c["within_reach"] and c["distance_km"] < 1
+
+
+class LookalikeQloo(FakeQloo):
+    def search(self, query, types=None, take=5):
+        if types == "urn:entity:place":
+            grill = place("GRILL", "Taste Baguette & Grill", "bar", lat=-33.88, lon=151.18)
+            grill["properties"] = {"is_closed": True}
+            return [grill, place("TB", "Taste Baguette", "cafe", lat=-33.911, lon=151.156)]
+        return super().search(query, types, take)
+
+
+def test_verify_prefers_exact_name_over_lookalike():
+    c = run_eval.verify_place(LookalikeQloo(), "Taste Baguette", "Marrickville", MARRICKVILLE, PROFILE)
+    assert c["matched_name"] == "Taste Baguette" and not c["closed"] and not c["alcohol_focused"]
+
+
+def test_verify_prefers_the_suggested_place_id():
+    c = run_eval.verify_place(LookalikeQloo(), "Taste Baguette", "Marrickville", MARRICKVILLE, PROFILE,
+                              entity_id="TB")
+    assert c["matched_name"] == "Taste Baguette" and c["within_reach"]
+
+
+def test_lookalike_still_used_when_it_is_the_only_match():
+    class OnlyGrill(LookalikeQloo):
+        def search(self, query, types=None, take=5):
+            return LookalikeQloo.search(self, query, types, take)[:1]
+    c = run_eval.verify_place(OnlyGrill(), "Taste Baguette", "Marrickville", MARRICKVILLE, PROFILE)
+    assert c["matched_name"] == "Taste Baguette & Grill"

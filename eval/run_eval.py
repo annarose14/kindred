@@ -60,8 +60,13 @@ def baseline_plan(llm, note, wait=15):
     return {"steps": steps, "group": g}
 
 
-def verify_place(q, name, suburb, origin, profile):
-    """Look the place up in Qloo near the suburb. Returns a dict of checks."""
+def verify_place(q, name, suburb, origin, profile, entity_id=None):
+    """Look the place up in Qloo near the suburb. Returns a dict of checks.
+
+    entity_id: the Qloo ID of the place a system actually suggested, when it has one. If the
+    lookup returns that exact place it is used, so a different place with a similar name
+    (e.g. "Taste Baguette & Grill" for "Taste Baguette") is never checked by mistake.
+    """
     out = {"found": False, "distance_km": None, "within_reach": None, "alcohol_focused": None, "closed": None}
     try:
         results = q.search(f"{name} {suburb}".strip(), types="urn:entity:place", take=5)
@@ -77,7 +82,13 @@ def verify_place(q, name, suburb, origin, profile):
     if not near:
         out["far_namesake_km"] = min((d for d, _ in with_dist if d is not None), default=None)
         return out
-    best = min(near, key=lambda x: x[0])[1]
+    # Best match first: the very place suggested, then an exact name, then the nearest.
+    def rank(x):
+        d, r = x
+        same_place = bool(entity_id) and r.get("entity_id") == entity_id
+        exact = name_match(name, r.get("name", "")) == 1.0
+        return (not same_place, not exact, d)
+    best = min(near, key=rank)[1]
     out["found"] = True
     out["matched_name"] = best.get("name")
     dist = safety.distance_km(best, origin)
@@ -163,12 +174,14 @@ def main():
         profile = k.get("profile") or intake.validate_profile({})
         suburb_name, origin = find_suburb(profile.get("suburb") or item["note"])
 
-        k_steps = [{"name": s["place"]["name"], "why": s["why"]} for s in (k.get("plan") or {}).get("steps", [])]
+        k_steps = [{"name": s["place"]["name"], "why": s["why"], "id": s["place"].get("id")}
+                   for s in (k.get("plan") or {}).get("steps", [])]
         k_group = (k.get("plan") or {}).get("group")
         row = {
             "id": item["id"], "note": item["note"], "status": k["status"], "suburb": suburb_name,
             "kindred": {"steps": k_steps, "group": {"name": k_group["name"]} if k_group else None,
-                        "checks": [verify_place(q, s["name"], suburb_name or "", origin, profile) for s in k_steps]},
+                        "checks": [verify_place(q, s["name"], suburb_name or "", origin, profile, s.get("id"))
+                                   for s in k_steps]},
             "baseline": {"steps": base.get("steps", []), "group": base.get("group"),
                          "checks": [verify_place(q, s["name"], s.get("suburb") or suburb_name or "", origin, profile)
                                     for s in base.get("steps", [])]},
