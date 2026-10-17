@@ -17,8 +17,9 @@ Choose 3 places from the candidate list by "id" and order them by "pressure" fro
 Never invent places.
 For each step write one short "action" (under 20 words) about simply visiting the place,
 e.g. "Short walk around the gardens on a weekday morning". Do NOT claim the place runs groups,
-classes, sessions, events or programs, and do NOT claim accessibility. You know nothing beyond
-the candidate data.
+classes, sessions, events or programs, and do NOT claim accessibility. Do NOT assume a job,
+family, routine or time of day beyond "a quiet time" or "a weekday morning". You know nothing
+beyond the candidate data.
 Return only JSON:
 {"summary": string under 30 words for the link worker,
  "steps": [{"place_id": string, "action": string}],

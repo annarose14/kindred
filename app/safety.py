@@ -25,6 +25,9 @@ UNSUITABLE_WORDS = ("tattoo", "piercing", "vape", "tobacco", "smoke shop", "casi
                     "betting", "tab", "bookmaker", "adult", "sex shop", "pawn")
 UNSUITABLE_CATEGORIES = {"tattoo_shop", "tattoo_parlor", "casino", "betting_shop", "gambling",
                          "vape_shop", "tobacco_shop", "adult_entertainment", "pawn_shop"}
+# Businesses you can't actually visit and sit in.
+NOT_VISITABLE_WORDS = ("pre-order", "pre order", "preorder", "online only", "order online",
+                       "delivery only", "catering", "wholesale", "ghost kitchen", "pop-up", "pop up")
 # Physically demanding venues: hidden for older or less mobile people unless it's their interest.
 PHYSICAL_WORDS = ("boulder", "climbing", "gym", "crossfit", "trampoline", "ninja", "parkour",
                   "boxing", "martial art", "skate", "f45", "rock wall")
@@ -108,12 +111,19 @@ def is_unsuitable(place):
     return any(re.search(rf"\b{w}\b", name) for w in UNSUITABLE_WORDS)
 
 
+def is_not_visitable(place):
+    name = str(place.get("name", "")).lower()
+    return any(w in name for w in NOT_VISITABLE_WORDS)
+
+
 def is_too_physical(place, profile):
     vulnerable = (profile.get("age_band") == "55_and_older" or profile.get("needs_step_free")
                   or profile.get("transport") == "walking_short")
     if not vulnerable:
         return False
-    text = " ".join([str(place.get("name", "")).lower()] + tag_names(place) + list(category_ids(place)))
+    # Name and venue type only, never descriptive tags: a park with a skate ramp or a
+    # climbing frame is still a calm park, but a bouldering gym with a cafe is still a gym.
+    text = " ".join([str(place.get("name", "")).lower()] + sorted(category_ids(place)))
     hits = [w for w in PHYSICAL_WORDS if w in text]
     if not hits:
         return False
@@ -130,6 +140,8 @@ def check_place(place, profile, origin):
         reasons.append("closed")
     if is_specialist(place) or is_unsuitable(place):
         reasons.append("not a social venue")
+    if is_not_visitable(place):
+        reasons.append("not a place to visit")
     if profile.get("avoid_alcohol", True) and alcohol_level(place) == 2:
         reasons.append("alcohol focused")
     if profile.get("prefers_calm", True) and loudness(place) >= 2:

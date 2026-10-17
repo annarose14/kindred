@@ -108,3 +108,40 @@ def test_bouldering_ok_if_older_person_loves_climbing():
 def test_gym_hidden_for_walker_user_any_age():
     p = dict(PROFILE, age_band="36_to_55", needs_step_free=True)
     assert "too physical" in safety.check_place(place("g", "Anytime Gym", "gym"), p, MARRICKVILLE)[1]
+
+
+# ---------- review 5 fixes ----------
+
+def test_park_with_skate_ramp_is_not_too_physical():
+    park = place("P", "Marrickville Park", "park", tags=["Skate park", "Climbing frame", "Benches"])
+    assert safety.check_place(park, PROFILE, MARRICKVILLE)[0]
+
+
+def test_bouldering_still_hidden_by_name():
+    assert "too physical" in safety.check_place(BOULDER, PROFILE, MARRICKVILLE)[1]
+
+
+def test_online_only_business_hidden():
+    for name in ["Annie Makes Cakes (Pre-order online)", "Cake Co - Delivery only", "Ghost Kitchen Eats"]:
+        ok, reasons, _ = safety.check_place(place("x", name, "bakery"), PROFILE, MARRICKVILLE)
+        assert not ok and "not a place to visit" in reasons, name
+
+
+def test_normal_bakery_is_visitable():
+    assert safety.check_place(place("x", "Bourke Street Bakery", "bakery"), PROFILE, MARRICKVILLE)[0]
+
+
+def test_planner_prompt_forbids_assumed_routine():
+    from app import planner
+    assert "Do NOT assume a job" in planner.SYSTEM
+
+
+def test_bouldering_gym_with_cafe_inside_still_hidden():
+    gym = place("BH2", "BlocHaus Bouldering Marrickville | Sydney", "recreation_center", tags=["Modern"])
+    gym["tags"].append({"id": "urn:tag:category:place:cafe", "name": "Cafe", "type": "urn:tag:category:place"})
+    assert "too physical" in safety.check_place(gym, PROFILE, MARRICKVILLE)[1]
+
+
+def test_climbing_gym_category_hidden_even_with_plain_name():
+    gym = place("CG", "The Wall Marrickville", "climbing_gym")
+    assert "too physical" in safety.check_place(gym, PROFILE, MARRICKVILLE)[1]
