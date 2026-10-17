@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kindred: social prescriptions</title>
+<meta name="description" content="Kindred helps social prescribing link workers turn what a lonely person already loves into gentle, safe first steps nearby, using Qloo taste intelligence.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script>
+  // Apply a saved theme before paint to avoid a flash.
+  try { var t = localStorage.getItem("kindred-theme"); if (t) document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+</script>
+<style>
+/* Light theme: high contrast, every text colour passes WCAG AA on its background. */
+:root {
+  --page: #E4EBE7;
+  --panel: #FFFFFF;
+  --ink: #142124;
+  --muted: #3E4E4F;
+  --euc: #22604E;
+  --euc-ink: #FFFFFF;
+  --euc-soft: #D5E7DE;
+  --rule: #B9C8C1;
+  --amber-bg: #FBEBCB;
+  --amber-ink: #6A3F07;
+  --risk-bg: #FADAD5;
+  --risk-ink: #7E1B10;
+  --shadow: 0 1px 0 #B9C8C1, 0 14px 34px -20px rgba(20, 33, 36, .45);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0F1615; --panel: #1A2321; --ink: #F1F6F3; --muted: #C9D6D1; --euc: #8DD3B7;
+    --euc-ink: #0B1A15; --euc-soft: #233A31; --rule: #3B4F48; --amber-bg: #3D2F14;
+    --amber-ink: #FAD9A1; --risk-bg: #46201B; --risk-ink: #FFC4BA;
+    --shadow: 0 1px 0 #2C3D37, 0 14px 34px -20px rgba(0, 0, 0, .8);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0F1615; --panel: #1A2321; --ink: #F1F6F3; --muted: #C9D6D1; --euc: #8DD3B7;
+  --euc-ink: #0B1A15; --euc-soft: #233A31; --rule: #3B4F48; --amber-bg: #3D2F14;
+  --amber-ink: #FAD9A1; --risk-bg: #46201B; --risk-ink: #FFC4BA;
+  --shadow: 0 1px 0 #2C3D37, 0 14px 34px -20px rgba(0, 0, 0, .8);
+  color-scheme: dark;
+}
+
+/* One base size that grows on big screens: about 18px on a laptop, 22px on a large monitor. */
+html { font-size: clamp(17px, 0.55vw + 11px, 22px); -webkit-text-size-adjust: 100%; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font-family: "Atkinson Hyperlegible", system-ui, sans-serif; font-size: 1rem; line-height: 1.55;
+}
+a { color: var(--euc); text-underline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--euc); outline-offset: 3px; border-radius: 6px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- top bar ---------- */
+.top {
+  max-width: 1600px; margin: 0 auto; padding: 1.4rem clamp(16px, 3vw, 48px) 0;
+  display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1.4rem;
+}
+.brand { display: flex; align-items: center; gap: .5rem; margin: 0; font-size: 1.9rem; line-height: 1; }
+.brand .rx { color: var(--euc); font-weight: 700; }
+.tagline { margin: 0; color: var(--muted); font-size: 1.05rem; flex: 1 1 22rem; }
+.theme {
+  font: inherit; font-size: .95rem; color: var(--ink); background: var(--panel);
+  border: 2px solid var(--rule); border-radius: 999px; padding: .35rem .9rem; cursor: pointer;
+}
+.theme:hover { border-color: var(--euc); }
+
+/* ---------- main layout ---------- */
+.wrap {
+  max-width: 1600px; margin: 0 auto; padding: 1.4rem clamp(16px, 3vw, 48px) 3rem;
+  display: grid; grid-template-columns: minmax(20rem, 27rem) minmax(0, 1fr); gap: clamp(20px, 2.5vw, 44px);
+  align-items: start;
+}
+.wrap > * { min-width: 0; }
+@media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+
+.panel { background: var(--panel); border-radius: 12px; box-shadow: var(--shadow); padding: 1.5rem; }
+
+/* ---------- left: the worker's desk ---------- */
+.desk { position: sticky; top: 1rem; }
+@media (max-width: 900px) { .desk { position: static; } }
+.judges {
+  background: var(--euc-soft); border-radius: 10px; padding: .85rem 1rem; margin: 0 0 1.2rem;
+}
+.judges strong { display: block; font-size: 1.05rem; }
+.judges p { margin: .15rem 0 0; }
+label.field, .field { display: block; font-weight: 700; font-size: 1.05rem; margin: 0 0 .45rem; }
+textarea {
+  width: 100%; min-height: 9rem; resize: vertical; padding: .8rem .9rem;
+  font: inherit; font-size: 1rem; color: var(--ink); background: var(--page);
+  border: 2px solid var(--rule); border-radius: 10px;
+}
+textarea::placeholder { color: var(--muted); opacity: 1; }
+textarea:focus { border-color: var(--euc); outline: none; box-shadow: 0 0 0 4px var(--euc-soft); }
+.hint { font-size: .92rem; color: var(--muted); margin: .4rem 0 1.2rem; }
+.samples { display: grid; gap: .5rem; margin: 0 0 1.2rem; padding: 0; list-style: none; }
+.samples button {
+  width: 100%; text-align: left; font: inherit; font-size: 1rem; color: var(--ink);
+  background: var(--page); border: 2px solid var(--rule); border-radius: 10px; padding: .65rem .9rem; cursor: pointer;
+}
+.samples button:hover { border-color: var(--euc); }
+.samples button[aria-pressed="true"] { border-color: var(--euc); background: var(--euc-soft); font-weight: 700; }
+.primary {
+  width: 100%; font: inherit; font-weight: 700; font-size: 1.15rem;
+  color: var(--euc-ink); background: var(--euc); border: 0; border-radius: 10px; padding: .9rem 1rem; cursor: pointer;
+}
+.primary:hover { filter: brightness(1.08); }
+.primary:disabled { opacity: .65; cursor: progress; }
+.footnote { font-size: .9rem; color: var(--muted); margin: 1.1rem 0 0; }
+
+/* ---------- right: how it works (before any plan) ---------- */
+.how h2 { margin: 0 0 .3rem; font-size: 1.6rem; line-height: 1.2; }
+.how > p { margin: 0 0 1.4rem; color: var(--muted); max-width: 60ch; }
+.how ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
+.how li { border-top: 4px solid var(--euc); background: var(--page); border-radius: 0 0 10px 10px; padding: 1rem 1.1rem 1.1rem; }
+.how li b { display: block; font-size: 1.1rem; margin-bottom: .25rem; }
+.how li span.n { display: block; color: var(--euc); font-weight: 700; font-size: 1.5rem; line-height: 1; margin-bottom: .4rem; }
+.how li p { margin: 0; color: var(--muted); font-size: .95rem; }
+.how .example { margin-top: 1.4rem; padding-top: 1.2rem; border-top: 2px solid var(--rule); }
+.how .example p { margin: 0; }
+
+/* ---------- the prescription slip ---------- */
+.slip { position: relative; padding: 2rem clamp(1.1rem, 2.4vw, 2.4rem) 1.8rem; }
+.slip::before { /* perforated tear-off edge */
+  content: ""; position: absolute; left: 0; right: 0; top: -7px; height: 14px;
+  background: radial-gradient(circle at 7px 7px, var(--page) 5px, transparent 5.5px) 0 0 / 18px 14px repeat-x;
+}
+.slip, .decided-body { overflow-wrap: anywhere; }
+.slip-head { display: flex; gap: 1.1rem; align-items: center; padding-bottom: 1rem; border-bottom: 3px solid var(--ink); }
+.slip-head .bigrx { font-size: 4rem; line-height: .8; color: var(--euc); font-weight: 700; }
+.slip-head h2 { margin: 0; font-size: 1.8rem; line-height: 1.15; }
+.slip-head .who { margin: .2rem 0 0; color: var(--muted); font-size: 1.05rem; }
+.chips { display: flex; flex-wrap: wrap; gap: .45rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.chips li { background: var(--euc-soft); border-radius: 999px; padding: .2rem .8rem; font-size: .95rem; font-weight: 700; }
+.chips li.need { background: var(--amber-bg); color: var(--amber-ink); }
+.summary { margin: 1.1rem 0 .4rem; font-size: 1.05rem; max-width: 70ch; }
+
+ol.weeks { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; gap: 1rem; }
+ol.weeks > li { background: var(--page); border-radius: 10px; padding: 1.1rem 1.3rem 1.2rem; border-left: 5px solid var(--euc); }
+ol.weeks .why { max-width: 70ch; }
+.wk { font-weight: 700; color: var(--euc); font-size: 1rem; margin: 0 0 .2rem; }
+.place { margin: 0; font-size: 1.35rem; line-height: 1.25; }
+.meta { color: var(--muted); font-size: .95rem; margin: .25rem 0 .7rem; }
+.action { margin: 0 0 .5rem; font-weight: 700; }
+.why { margin: 0; }
+.why b { color: var(--euc); }
+.note { display: inline-block; margin-top: .7rem; font-size: .92rem; font-weight: 700; padding: .15rem .6rem; border-radius: 6px; background: var(--euc-soft); }
+.note.warn { background: var(--amber-bg); color: var(--amber-ink); }
+
+.group { margin-top: 1.4rem; padding: 1.2rem 1.3rem; border: 3px solid var(--euc); border-radius: 12px; }
+.group h3 { margin: 0 0 .2rem; font-size: 1rem; color: var(--euc); }
+.group .gname { margin: 0; font-size: 1.4rem; font-weight: 700; }
+.group dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .35rem 1rem; margin: .8rem 0 0; }
+.group dt { color: var(--muted); font-weight: 700; }
+.group dd { margin: 0; }
+@media (max-width: 520px) { .group dl { grid-template-columns: 1fr; } .group dd { margin-bottom: .4rem; } }
+.ask { margin: 1.4rem 0 0; padding: .9rem 1.1rem; background: var(--page); border-radius: 10px; font-size: 1.05rem; }
+.ask span { display: block; color: var(--muted); font-size: .92rem; font-weight: 700; }
+
+.tools { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.4rem; }
+.tools button {
+  font: inherit; font-size: 1rem; font-weight: 700; color: var(--ink); background: transparent; cursor: pointer;
+  border: 2px solid var(--rule); border-radius: 10px; padding: .55rem 1rem;
+}
+.tools button:hover { border-color: var(--euc); }
+
+.message { padding: 1.1rem 1.2rem; border-radius: 10px; background: var(--euc-soft); font-size: 1.1rem; }
+.message.risk { background: var(--risk-bg); color: var(--risk-ink); font-weight: 700; }
+.message p { margin: 0; }
+
+.working h2 { margin: 0 0 .6rem; font-size: 1.4rem; }
+.working ol { margin: 0; padding-left: 1.4rem; display: grid; gap: .4rem; font-size: 1.1rem; color: var(--muted); }
+.working li.done { color: var(--ink); }
+.working li.done::marker { content: "\2713  "; color: var(--euc); }
+.working li.now { color: var(--euc); font-weight: 700; }
+
+details.decided { margin-top: 1rem; }
+details.decided summary { cursor: pointer; padding: 1rem 1.5rem; font-weight: 700; font-size: 1.1rem; }
+.decided-body { padding: 0 1.5rem 1.3rem; }
+.decided-body h3 { font-size: 1.02rem; margin: 1rem 0 .4rem; }
+.decided-body ul { margin: 0; padding-left: 1.3rem; }
+.trace { list-style: none; padding: 0; margin: 0; }
+.trace li { display: grid; grid-template-columns: 4rem minmax(0, 1fr); gap: .7rem; padding: .35rem 0; border-bottom: 1px solid var(--rule); }
+.trace .ms { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .reveal { animation: arrive .4s ease-out both; }
+  @keyframes arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}
+@media print {
+  :root { --page: #fff; --panel: #fff; --ink: #000; --muted: #333; --euc: #000; --euc-soft: #eee; }
+  body { font-size: 11pt; }
+  .top, .desk, .tools, details.decided, .slip::before { display: none !important; }
+  .wrap { display: block; padding: 0; }
+  .panel { box-shadow: none; padding: 0; }
+  ol.weeks { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1 class="brand"><span class="rx" aria-hidden="true">&#8478;</span>Kindred</h1>
+  <p class="tagline">Gentle first steps for people referred for loneliness, matched to what they already love.</p>
+  <button class="theme" id="theme" type="button" aria-label="Switch colour theme">Dark mode</button>
+</header>
+
+<main class="wrap">
+  <section class="desk panel" aria-label="Write a note">
+    <div class="judges">
+      <strong>New here?</strong>
+      <p>Pick a sample, then press Make a plan. It takes a few seconds.</p>
+    </div>
+
+    <form id="form" novalidate>
+      <p class="field" id="samples-label">Try a sample</p>
+      <ul class="samples" id="samples" aria-labelledby="samples-label"></ul>
+
+      <label class="field" for="note">Or write a note</label>
+      <textarea id="note" name="note" maxlength="1500" aria-describedby="note-hint"
+        placeholder="Age, suburb, how they get around, and what they love: a hobby, a band, a film, a book."></textarea>
+      <p class="hint" id="note-hint">Don't include names or contact details. Notes are not stored.</p>
+
+      <button class="primary" type="submit" id="go">Make a plan</button>
+    </form>
+
+    <p class="footnote">Pilot area: Sydney's Inner West and eastern suburbs. Places come from
+      <a href="https://www.qloo.com" rel="noopener">Qloo</a> taste data. Groups are checked by hand
+      against council and library pages. <a href="/api/health">Service status</a></p>
+  </section>
+
+  <section aria-label="Plan">
+    <div id="result" aria-live="polite">
+      <article class="panel how">
+        <h2>From a short note to a gentle plan</h2>
+        <p>Link workers help lonely people find their way back into community life. Kindred turns what
+          someone already loves into small, safe first steps close to home.</p>
+        <ol>
+          <li><span class="n">1</span><b>Reads the note</b><p>Age, suburb, how they travel, and what they love. Names and contact details are removed.</p></li>
+          <li><span class="n">2</span><b>Finds taste matches</b><p>Qloo finds nearby places that people with the same tastes enjoy.</p></li>
+          <li><span class="n">3</span><b>Checks every place</b><p>Hides pubs, loud or closed places, and anything too far or too physical.</p></li>
+          <li><span class="n">4</span><b>Builds the plan</b><p>Three weeks from quiet to social, then a real local group to join.</p></li>
+        </ol>
+        <div class="example">
+          <p><strong>Example:</strong> a 74 year old widow in Marrickville who loves gardening and Fleetwood Mac gets a
+            park tagged for community gardening, a calm cafe, and the Addison Road Community Garden's monthly working bee.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (s) { return document.querySelector(s); };
+  var form = $("#form"), note = $("#note"), go = $("#go"), result = $("#result"), samplesEl = $("#samples");
+  var lastPlanText = "";
+
+  // ---------- theme switch ----------
+  var themeBtn = $("#theme");
+  function currentTheme() {
+    var t = document.documentElement.getAttribute("data-theme");
+    if (t) return t;
+    return window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  function paintThemeButton() { themeBtn.textContent = currentTheme() === "dark" ? "Light mode" : "Dark mode"; }
+  themeBtn.addEventListener("click", function () {
+    var next = currentTheme() === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("kindred-theme", next); } catch (e) {}
+    paintThemeButton();
+  });
+  paintThemeButton();
+
+  // Build elements safely (never innerHTML with data).
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === "text") n.textContent = attrs[k];
+      else if (k === "cls") n.className = attrs[k];
+      else n.setAttribute(k, attrs[k]);
+    });
+    (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+
+  var AGE = { "55_and_older": "55 and over", "36_to_55": "36 to 55", "35_and_younger": "35 and under" };
+  var TRAVEL = { walking_short: "short walks only", walking: "walking", bus: "bus", car: "car" };
+
+  // ---------- samples ----------
+  fetch("/api/samples").then(function (r) { return r.json(); }).then(function (list) {
+    list.forEach(function (s) {
+      var b = el("button", { type: "button", "aria-pressed": "false", text: s.title });
+      b.addEventListener("click", function () {
+        note.value = s.note;
+        samplesEl.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
+        b.setAttribute("aria-pressed", "true");
+      });
+      samplesEl.appendChild(el("li", null, [b]));
+    });
+  }).catch(function () {});
+  note.addEventListener("input", function () {
+    samplesEl.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
+  });
+
+  // ---------- working state ----------
+  var STEPS = ["Reading the note", "Finding taste matches with Qloo", "Checking each place is safe and nearby", "Writing the plan"];
+  var timer = null;
+  function showWorking() {
+    var items = STEPS.map(function (t) { return el("li", { text: t }); });
+    result.replaceChildren(el("article", { cls: "panel working" }, [el("h2", { text: "Making the plan" }), el("ol", null, items)]));
+    var i = 0;
+    function tick() {
+      items.forEach(function (li, j) { li.className = j < i ? "done" : (j === i ? "now" : ""); });
+      if (i < items.length - 1) i++;
+    }
+    tick(); timer = setInterval(tick, 1300);
+  }
+  function stopWorking() { if (timer) clearInterval(timer); timer = null; }
+
+  // ---------- render ----------
+  function message(text, risk) {
+    var box = el("div", { cls: "message" + (risk ? " risk" : ""), role: risk ? "alert" : "status" }, [el("p", { text: text })]);
+    result.replaceChildren(el("article", { cls: "panel reveal" }, [box]));
+  }
+
+  function renderPlan(data) {
+    var p = data.profile, plan = data.plan, m = data.match;
+    var today = new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
+    var who = [AGE[p.age_band], p.suburb, "travels by " + (TRAVEL[p.transport] || p.transport)].filter(Boolean).join(", ");
+
+    var chips = el("ul", { cls: "chips", "aria-label": "What they love and need" });
+    m.interests.forEach(function (i) { chips.appendChild(el("li", { text: i.label })); });
+    if (p.needs_step_free) chips.appendChild(el("li", { cls: "need", text: "Step free access" }));
+    if (p.avoid_alcohol) chips.appendChild(el("li", { cls: "need", text: "No alcohol venues" }));
+    if (p.prefers_calm) chips.appendChild(el("li", { cls: "need", text: "Calm places" }));
+
+    var head = el("header", { cls: "slip-head" }, [
+      el("span", { cls: "bigrx", "aria-hidden": "true", text: "℞" }),
+      el("div", null, [el("h2", { text: "Social prescription" }), el("p", { cls: "who", text: who + ". " + today + "." })])
+    ]);
+
+    var weeks = el("ol", { cls: "weeks" });
+    var lines = ["Social prescription, " + today, who, ""];
+    plan.steps.forEach(function (s) {
+      var pl = s.place;
+      var meta = [pl.category, pl.distance_km != null ? pl.distance_km + " km away" : null, pl.address].filter(Boolean).join(", ");
+      var noteEls = (pl.notes || []).map(function (n) {
+        var warn = n.indexOf("phone ahead") >= 0;
+        return el("span", { cls: "note" + (warn ? " warn" : ""), text: warn ? "Access not listed: phone ahead" : "Accessibility listed" });
+      });
+      weeks.appendChild(el("li", null, [
+        el("p", { cls: "wk", text: "Week " + s.week }),
+        el("h3", { cls: "place", text: pl.name }),
+        el("p", { cls: "meta", text: meta }),
+        el("p", { cls: "action", text: s.action }),
+        el("p", { cls: "why" }, [el("b", { text: "Why: " }), s.why])
+      ].concat(noteEls)));
+      lines.push("Week " + s.week + ": " + pl.name + " (" + meta + ")", "  " + s.action, "  Why: " + s.why);
+    });
+
+    var kids = [head, chips];
+    if (plan.summary) kids.push(el("p", { cls: "summary", text: plan.summary }));
+    kids.push(weeks);
+
+    var g = plan.group;
+    if (g) {
+      var src = el("a", { href: g.source, rel: "noopener", target: "_blank", text: "Official page" });
+      kids.push(el("section", { cls: "group", "aria-label": "Group to try when ready" }, [
+        el("h3", { text: "When they're ready, a group" }),
+        el("p", { cls: "gname", text: g.name }),
+        el("p", { cls: "why", text: g.reason + "." }),
+        el("dl", null, [
+          el("dt", { text: "Where" }), el("dd", { text: g.where + (g.distance_km != null ? " (" + g.distance_km + " km)" : "") }),
+          el("dt", { text: "When" }), el("dd", { text: g.when }),
+          el("dt", { text: "How to join" }), el("dd", { text: g.join }),
+          el("dt", { text: "Source" }), el("dd", null, [src, " (checked " + g.checked + ")"])
+        ])
+      ]));
+      lines.push("", "When ready, a group: " + g.name, "  " + g.where, "  " + g.when, "  " + g.join, "  " + g.source);
+    }
+    if (plan.conversation_starter) {
+      kids.push(el("p", { cls: "ask" }, [el("span", { text: "A question to ask them" }), plan.conversation_starter]));
+      lines.push("", "Ask: " + plan.conversation_starter);
+    }
+
+    var printBtn = el("button", { type: "button", text: "Print" });
+    printBtn.addEventListener("click", function () { window.print(); });
+    var copyBtn = el("button", { type: "button", text: "Copy as text" });
+    copyBtn.addEventListener("click", function () {
+      navigator.clipboard.writeText(lastPlanText).then(function () {
+        copyBtn.textContent = "Copied"; setTimeout(function () { copyBtn.textContent = "Copy as text"; }, 1800);
+      }).catch(function () { copyBtn.textContent = "Copy not available"; });
+    });
+    kids.push(el("div", { cls: "tools" }, [printBtn, copyBtn]));
+    lastPlanText = lines.join("\n");
+
+    result.replaceChildren(el("article", { cls: "panel slip reveal", tabindex: "-1", id: "slip" }, kids), decided(data));
+    document.getElementById("slip").focus();
+  }
+
+  function decided(data) {
+    var m = data.match || {}, body = el("div", { cls: "decided-body" });
+    if (m.interests && m.interests.length) {
+      body.appendChild(el("h3", { text: "What Qloo understood" }));
+      body.appendChild(el("ul", null, m.interests.map(function (i) {
+        return el("li", { text: i.label + " → " + i.matched + " (" + (i.signal === "tag" ? "taste tag" : "Qloo " + i.kind) + ")" });
+      })));
+    }
+    var ex = m.excluded || {}, keys = Object.keys(ex).sort(function (a, b) { return ex[b] - ex[a]; });
+    if (keys.length) {
+      body.appendChild(el("h3", { text: "Places hidden for safety" }));
+      body.appendChild(el("ul", null, keys.map(function (k) { return el("li", { text: ex[k] + " " + k }); })));
+    }
+    body.appendChild(el("h3", { text: "Every step the agent took" }));
+    body.appendChild(el("ol", { cls: "trace" }, (data.trace || []).map(function (t) {
+      return el("li", null, [el("span", { cls: "ms", text: (t.ms / 1000).toFixed(1) + " s" }), el("span", { text: t.detail })]);
+    })));
+    return el("details", { cls: "decided panel" }, [el("summary", { text: "How Kindred decided" }), body]);
+  }
+
+  // ---------- submit ----------
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var text = note.value.trim();
+    if (text.length < 10) { message("Please write a short note first, or pick a sample."); note.focus(); return; }
+    go.disabled = true; go.textContent = "Making a plan";
+    showWorking();
+    if (window.matchMedia("(max-width: 900px)").matches) result.scrollIntoView({ behavior: "smooth", block: "start" });
+    fetch("/api/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: text }) })
+      .then(function (r) { return r.json().catch(function () { return { status: "unavailable" }; }); })
+      .then(function (data) {
+        stopWorking();
+        if (data.status === "ok") renderPlan(data);
+        else message(data.message || "Something went wrong. Please try again.", data.status === "risk");
+      })
+      .catch(function () { stopWorking(); message("Kindred couldn't be reached. Check your connection and try again."); })
+      .finally(function () { go.disabled = false; go.textContent = "Make a plan"; });
+  });
+})();
+</script>
+</body>
+</html>

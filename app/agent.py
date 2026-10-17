@@ -31,6 +31,14 @@ MESSAGES = {
 }
 
 
+def describe_hidden(excluded):
+    """{'too far': 2, 'closed': 1} -> '2 too far, 1 closed' (largest first)."""
+    if not excluded:
+        return "none"
+    items = sorted(excluded.items(), key=lambda kv: (-kv[1], kv[0]))
+    return ", ".join(f"{n} {reason}" for reason, n in items)
+
+
 def retry_with_examples(q, llm, interest):
     """Ask the LLM for concrete examples of an interest Qloo didn't know, and try them."""
     try:
@@ -85,7 +93,7 @@ def run(note, q, llm, profile_override=None):
         return {"status": match["error"], "message": MESSAGES[match["error"]],
                 "profile": profile, "trace": trace}
     log("match", f"{len(match['candidates'])} safe places from {len(match['categories_used'])} place "
-                 f"types; hidden {match['excluded']}")
+                 f"types; hidden: {describe_hidden(match['excluded'])}")
 
     if len(match["candidates"]) < MIN_CANDIDATES and profile["transport"] in WIDER:
         wider = dict(profile, transport=WIDER[profile["transport"]])
