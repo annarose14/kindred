@@ -422,7 +422,8 @@ details.decided summary { cursor: pointer; padding: 1rem 1.5rem; font-weight: 70
     var chips = el("ul", { cls: "chips", "aria-label": "What they love and need" });
     m.interests.forEach(function (i) { chips.appendChild(el("li", { text: i.label })); });
     if (p.needs_step_free) chips.appendChild(el("li", { cls: "need", text: "Step free access" }));
-    if (p.avoid_alcohol) chips.appendChild(el("li", { cls: "need", text: "No alcohol venues" }));
+    if (p.no_alcohol) chips.appendChild(el("li", { cls: "need", text: "No alcohol at all" }));
+    else if (p.avoid_alcohol) chips.appendChild(el("li", { cls: "need", text: "No alcohol venues" }));
     if (p.prefers_calm) chips.appendChild(el("li", { cls: "need", text: "Calm places" }));
 
     var head = el("header", { cls: "slip-head" }, [

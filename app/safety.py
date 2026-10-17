@@ -142,8 +142,11 @@ def check_place(place, profile, origin):
         reasons.append("not a social venue")
     if is_not_visitable(place):
         reasons.append("not a place to visit")
-    if profile.get("avoid_alcohol", True) and alcohol_level(place) == 2:
+    level = alcohol_level(place)
+    if profile.get("avoid_alcohol", True) and level == 2:
         reasons.append("alcohol focused")
+    elif profile.get("no_alcohol") and level >= 1:
+        reasons.append("serves alcohol")
     loud_limit = 1 if profile.get("strict_calm") else 2
     if profile.get("prefers_calm", True) and loudness(place) >= loud_limit:
         reasons.append("too loud")

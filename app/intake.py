@@ -26,6 +26,7 @@ Never include the person's name or any identifying detail. Return only this JSON
  "transport": "walking_short" | "walking" | "bus" | "car",
  "needs_step_free": boolean,
  "avoid_alcohol": boolean,
+ "no_alcohol": boolean,
  "prefers_calm": boolean,
  "goal": short string
 }
@@ -38,7 +39,8 @@ Use "activity" for hobbies and sports, as one or two words. Max 4 interests.
 Age: "older", "elderly", "retired", "pensioner" or 55+ -> "55_and_older"; 36 to 55 or "middle aged"
 -> "36_to_55"; 35 or under, "student", "young" -> "35_and_younger"; otherwise null. "walking_short" means they can only walk a little.
 "can't drive" with no other detail means "bus". Default avoid_alcohol true and prefers_calm true
-unless the note clearly says otherwise. needs_step_free is true for wheelchair, walker, frame or
+unless the note clearly says otherwise. no_alcohol is true only when the person does not drink at
+all (for example "doesn't drink", "sober", "non-drinker", "teetotal"); "avoids pubs" alone is false. needs_step_free is true for wheelchair, walker, frame or
 trouble with stairs."""
 
 
@@ -75,6 +77,7 @@ def validate_profile(raw):
         "avoid_alcohol": raw.get("avoid_alcohol", True) is not False,
         "prefers_calm": raw.get("prefers_calm", True) is not False,
         "strict_calm": raw.get("strict_calm") is True,
+        "no_alcohol": raw.get("no_alcohol") is True,
         "goal": str(raw.get("goal") or "feel more connected")[:120],
     }
 
@@ -92,6 +95,10 @@ FILLER_START = re.compile(r"^(a|an|going to|watching|listening to|playing|readin
 LOWER_THE = re.compile(r"^the\s+(?=[a-z])")  # "the theatre" -> "theatre", but keep "The Crown"
 FILLER_END = re.compile(r"\s+(on tv|on the tv|books|novels|films|movies|music|songs|shows|a lot|"
                         r"very much|so much)$", re.I)
+
+
+NO_DRINK = re.compile(r"\b(doesn'?t|does not|don'?t|do not|never) drinks?\b|\b(sober|non-?drinker|teetotal|"
+                      r"no alcohol|alcohol free|stopped drinking|quit drinking)\b")
 
 
 def _age_band(text):
@@ -175,6 +182,7 @@ def rules_profile(note):
         "transport": _transport(note),
         "needs_step_free": bool(re.search(r"\b(wheelchair|walker|frame|step free|stairs)\b", t)),
         "avoid_alcohol": True,
+        "no_alcohol": bool(NO_DRINK.search(t)),
         "prefers_calm": True,
         "goal": "feel more connected",
     })
