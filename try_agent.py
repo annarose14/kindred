@@ -37,6 +37,11 @@ def show(note, out):
             print(f"     Evidence: {pl['evidence']}")
             if pl["notes"]:
                 print(f"     Notes: {pl['notes']}")
+        g = plan.get("group")
+        if g:
+            print(f"  When ready, a group: {g['name']} ({g['suburb']}, {g['distance_km']} km)")
+            print(f"     {g['reason']}. {g['when']}. {g['join']}")
+            print(f"     Source (checked {g['checked']}): {g['source']}")
         if plan.get("conversation_starter"):
             print("  Conversation starter:", plan["conversation_starter"])
     print("\nTRACE:")

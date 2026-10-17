@@ -25,6 +25,9 @@ UNSUITABLE_WORDS = ("tattoo", "piercing", "vape", "tobacco", "smoke shop", "casi
                     "betting", "tab", "bookmaker", "adult", "sex shop", "pawn")
 UNSUITABLE_CATEGORIES = {"tattoo_shop", "tattoo_parlor", "casino", "betting_shop", "gambling",
                          "vape_shop", "tobacco_shop", "adult_entertainment", "pawn_shop"}
+# Physically demanding venues: hidden for older or less mobile people unless it's their interest.
+PHYSICAL_WORDS = ("boulder", "climbing", "gym", "crossfit", "trampoline", "ninja", "parkour",
+                  "boxing", "martial art", "skate", "f45", "rock wall")
 CALM_TAG_WORDS = ("relaxing", "quiet", "cozy", "comfortable", "calm", "peaceful", "community oriented")
 ACCESS_TAG_TYPE = "urn:tag:accessibility:place"
 
@@ -105,6 +108,21 @@ def is_unsuitable(place):
     return any(re.search(rf"\b{w}\b", name) for w in UNSUITABLE_WORDS)
 
 
+def is_too_physical(place, profile):
+    vulnerable = (profile.get("age_band") == "55_and_older" or profile.get("needs_step_free")
+                  or profile.get("transport") == "walking_short")
+    if not vulnerable:
+        return False
+    text = " ".join([str(place.get("name", "")).lower()] + tag_names(place) + list(category_ids(place)))
+    hits = [w for w in PHYSICAL_WORDS if w in text]
+    if not hits:
+        return False
+    liked = " ".join(str(i.get("name", "")).lower() for i in profile.get("interests", []))
+    families = {"boulder": "climb", "rock wall": "climb", "climbing": "climb", "gym": "fitness",
+                "crossfit": "fitness", "f45": "fitness", "martial art": "martial", "boxing": "box"}
+    return not any(w[:5] in liked or families.get(w, "~") in liked for w in hits)
+
+
 def check_place(place, profile, origin):
     """Return (ok, reasons_excluded, notes) for one place."""
     reasons, notes = [], []
@@ -116,6 +134,8 @@ def check_place(place, profile, origin):
         reasons.append("alcohol focused")
     if profile.get("prefers_calm", True) and loudness(place) >= 2:
         reasons.append("too loud")
+    if is_too_physical(place, profile):
+        reasons.append("too physical")
 
     dist = distance_km(place, origin)
     limit = MAX_KM.get(profile.get("transport", "bus"), MAX_KM["bus"])

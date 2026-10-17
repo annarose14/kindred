@@ -7,7 +7,8 @@ The agent acts on its own when results are weak:
 """
 import time
 
-from app import intake, matcher, planner
+from app import groups, intake, matcher, planner
+from app.suburbs import find_suburb
 
 MIN_CANDIDATES = 3
 WIDER = {"walking_short": "walking", "walking": "bus", "bus": "car"}
@@ -105,4 +106,11 @@ def run(note, q, llm, profile_override=None):
     if plan.get("skipped"):
         detail += f" (skipped: {plan['skipped']})"
     log("plan", detail)
+    _, origin = find_suburb(profile.get("suburb"))
+    plan["group"] = groups.match_group(profile, match["interests"], origin)
+    if plan["group"]:
+        log("group", f"Suggested '{plan['group']['name']}' as the social next step: "
+                     f"{plan['group']['reason']}")
+    else:
+        log("group", "No checked local group nearby fits yet; the worker can add one")
     return {"status": "ok", "profile": profile, "match": match, "plan": plan, "trace": trace}

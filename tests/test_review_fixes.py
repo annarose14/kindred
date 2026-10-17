@@ -110,5 +110,5 @@ def test_one_loud_tag_is_penalised_not_hidden():
 # Fix 7: the trace says why the LLM plan was rejected
 def test_trace_shows_fallback_reason():
     out = agent.run(None, FakeQloo(), FakeLLM({"steps": [{"place_id": "NOPE"}]}), profile_override=PROFILE)
-    plan_line = out["trace"][-1]["detail"]
+    plan_line = next(t["detail"] for t in out["trace"] if t["step"] == "plan")
     assert "rules" in plan_line and "unknown place" in plan_line

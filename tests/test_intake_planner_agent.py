@@ -101,7 +101,7 @@ def test_agent_happy_path(q):
     llm = FakeLLM(PROFILE, {"summary": "s", "steps": [{"place_id": cands[0]["id"]}]})
     out = agent.run(NOTE, q, llm)
     assert out["status"] == "ok" and out["plan"]["steps"]
-    assert [t["step"] for t in out["trace"]] == ["read_note", "understand", "understand", "match", "plan"]
+    assert [t["step"] for t in out["trace"]] == ["read_note", "understand", "understand", "match", "plan", "group"]
 
 
 def test_agent_survives_planner_llm_failure(q):
