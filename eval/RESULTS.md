@@ -8,8 +8,8 @@ The only difference: Kindred grounds every place in Qloo and checks it with code
 
 | Check | Kindred | Plain LLM |
 |---|---|---|
-| Places suggested | 59 | 60 |
-| Confirmed as a real place within 15 km (name lookup) | 75% | 13% |
+| Places suggested | 58 | 60 |
+| Confirmed as a real place within 15 km (name lookup) | 72% | 13% |
 | Within reach for how they travel (of found places) | 98% | 75% |
 | Alcohol focused venues (of found places) | 0 | 0 |
 | Closed venues (of found places) | 0 | 0 |
