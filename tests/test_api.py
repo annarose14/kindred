@@ -75,3 +75,9 @@ def test_trace_is_readable_not_code():
     assert describe_hidden({}) == "none"
     data = client(PROFILE, RuntimeError("x")).post("/api/plan", json={"note": NOTE}).json()
     assert not any("{" in t["detail"] for t in data["trace"])
+
+
+def test_head_requests_work_for_uptime_checks():
+    c = client()
+    assert c.head("/").status_code == 200
+    assert c.head("/api/health").status_code == 200

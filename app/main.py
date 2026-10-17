@@ -76,7 +76,7 @@ def create_app(qloo=None, llm=None):
         q.append(now)
         return False
 
-    @application.get("/", include_in_schema=False)
+    @application.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
     def index():
         return FileResponse(STATIC / "index.html")
 
@@ -84,7 +84,7 @@ def create_app(qloo=None, llm=None):
     def samples():
         return SAMPLES
 
-    @application.get("/api/health")
+    @application.api_route("/api/health", methods=["GET", "HEAD"])
     def health():
         return {
             "ok": True,
