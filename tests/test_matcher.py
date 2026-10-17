@@ -72,7 +72,8 @@ def test_one_failing_category_does_not_break(profile):
 
 def test_max_two_per_category(profile):
     many = [dict(FakeQloo().by_category["park"][0], entity_id=f"P{i}", name=f"Park {i}") for i in range(6)]
-    q = FakeQloo(by_category={"park": many})
+    others = FakeQloo().by_category
+    q = FakeQloo(by_category=dict(others, park=many))
     out = matcher.find_places(q, profile)
     assert len([c for c in out["candidates"] if c["category"] == "Park"]) == 2
 

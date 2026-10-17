@@ -373,18 +373,25 @@ def find_places(q, profile, resolved=None, limit=8, extra_suburbs=(), exclude_id
 
     candidates.sort(key=lambda c: (-c["score"], c["name"] or ""))
     picked, per_cat = [], {}
-    food = 0
+    food, skipped = 0, []
     for c in candidates:
         if per_cat.get(c["category"], 0) >= MAX_PER_CATEGORY:
+            skipped.append(c)
             continue
         if c["category"] in FOOD:
             if food >= MAX_FOOD:
+                skipped.append(c)
                 continue
             food += 1
         per_cat[c["category"]] = per_cat.get(c["category"], 0) + 1
         picked.append(c)
         if len(picked) >= limit:
             break
+    # The caps keep variety, but never at the cost of a short plan: fill up to 3 if needed.
+    for c in skipped:
+        if len(picked) >= min(3, limit):
+            break
+        picked.append(c)
     # Make sure at least one social place (pressure 3 or 2) is offered when one exists.
     if picked and max(c["pressure"] for c in picked) < 2:
         social = next((c for c in candidates if c["pressure"] >= 2 and c not in picked), None)

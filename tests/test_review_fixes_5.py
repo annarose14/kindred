@@ -94,3 +94,18 @@ def test_seniors_group_not_offered_to_young_person():
 def test_seniors_group_still_offered_to_older_person():
     g = match_group(PROFILE, [{"label": "Fleetwood Mac", "matched": "Fleetwood Mac", "kind": "artist"}], MARRICKVILLE)
     assert g["id"] == "g_st_peters_gathering" and "audience" not in g
+
+
+def test_food_cap_never_makes_a_short_plan():
+    cafes = [place(f"C{i}", f"Cafe {i}", "cafe", tags=["Cozy"]) for i in range(2)]
+    bakeries = [place(f"B{i}", f"Bakery {i}", "bakery", tags=["Cozy"]) for i in range(2)]
+    q = FakeQloo(by_category={"cafe": cafes, "bakery": bakeries})
+    q._kindred_categories = {"cafe": {"label": "Cafe", "pressure": 2}, "bakery": {"label": "Bakery", "pressure": 2}}
+    out = matcher.find_places(q, PROFILE)
+    assert len(out["candidates"]) == 3
+
+
+def test_same_category_cap_never_makes_a_short_plan():
+    parks = [place(f"P{i}", f"Park {i}", "park", tags=["Quiet"]) for i in range(4)]
+    out = matcher.find_places(FakeQloo(by_category={"park": parks}), PROFILE)
+    assert len(out["candidates"]) == 3
