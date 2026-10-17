@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_URL = os.getenv("QLOO_BASE_URL", "https://hackathon.api.qloo.com")
+TIMEOUT = 10  # seconds per request: fail fast so the page never hangs
 CACHE_DIR = Path(__file__).parent / "cache"
 CACHE_DIR.mkdir(exist_ok=True)
 
@@ -20,7 +21,7 @@ class QlooError(Exception):
 
 
 class QlooClient:
-    def __init__(self, api_key=None, use_cache=True, max_retries=3):
+    def __init__(self, api_key=None, use_cache=True, max_retries=2):
         self.api_key = api_key or os.getenv("QLOO_API_KEY")
         if not self.api_key or self.api_key.startswith("paste"):
             raise QlooError("QLOO_API_KEY is missing in .env")
@@ -39,7 +40,12 @@ class QlooClient:
             return json.loads(cache_file.read_text())
 
         for attempt in range(self.max_retries):
-            r = self.session.get(BASE_URL + path, params=params, timeout=30)
+            try:
+                r = self.session.get(BASE_URL + path, params=params, timeout=TIMEOUT)
+            except requests.RequestException as e:
+                if attempt == self.max_retries - 1:
+                    raise QlooError(f"Network problem on {path}: {type(e).__name__}") from e
+                continue
             if r.status_code == 429:
                 time.sleep(2 ** attempt)
                 continue
