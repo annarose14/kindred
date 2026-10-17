@@ -128,3 +128,12 @@ def test_lookalike_still_used_when_it_is_the_only_match():
             return LookalikeQloo.search(self, query, types, take)[:1]
     c = run_eval.verify_place(OnlyGrill(), "Taste Baguette", "Marrickville", MARRICKVILLE, PROFILE)
     assert c["matched_name"] == "Taste Baguette & Grill"
+
+
+def test_lookalike_with_a_different_id_is_not_found():
+    class OnlyGrill(LookalikeQloo):
+        def search(self, query, types=None, take=5):
+            return LookalikeQloo.search(self, query, types, take)[:1]
+    c = run_eval.verify_place(OnlyGrill(), "Taste Baguette", "Marrickville", MARRICKVILLE, PROFILE,
+                              entity_id="TB")
+    assert not c["found"] and c["closed"] is None and c["alcohol_focused"] is None

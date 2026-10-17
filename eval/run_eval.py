@@ -75,6 +75,11 @@ def verify_place(q, name, suburb, origin, profile, entity_id=None):
     # Among same-name results, use the one nearest the person's suburb (chains have many branches).
     matches = [r for r in results
                if name_match(name, r.get("name", "")) >= 0.9 or name_match(r.get("name", ""), name) >= 0.9]
+    if entity_id:
+        # We know exactly which place was suggested: a similar name with a different ID is a
+        # different place, so it must not be checked in its place.
+        matches = [r for r in matches
+                   if r.get("entity_id") == entity_id or name_match(name, r.get("name", "")) == 1.0]
     if not matches:
         return out
     with_dist = [(safety.distance_km(r, origin), r) for r in matches]
