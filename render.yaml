@@ -1,0 +1,23 @@
+# Render Blueprint: one free web service, deployed from GitHub on every push.
+# Secret keys are entered in the Render dashboard, never stored in this repo.
+services:
+  - type: web
+    name: kindred
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: QLOO_BASE_URL
+        value: https://hackathon.api.qloo.com
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: QLOO_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
