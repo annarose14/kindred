@@ -34,6 +34,12 @@ MESSAGES = {
 }
 
 
+def _names(items):
+    """['A', 'B'] -> "'A' and 'B'" for a readable trace."""
+    items = [f"'{i}'" for i in items]
+    return " and ".join([", ".join(items[:-1]), items[-1]]) if len(items) > 1 else (items[0] if items else "nothing")
+
+
 def describe_hidden(excluded):
     """{'too far': 2, 'closed': 1} -> '2 too far, 1 closed' (largest first)."""
     if not excluded:
@@ -90,9 +96,9 @@ def run(note, q, llm, profile_override=None):
         r, tried = retry_with_examples(q, llm, interest)
         if r:
             resolved.append(r)
-            log("retry", f"Qloo didn't know '{interest['name']}'; tried {tried}, used '{r['matched']}'")
+            log("retry", f"Qloo didn't know '{interest['name']}'; tried {_names(tried)}, used '{r['matched']}'")
         else:
-            log("retry", f"Qloo didn't know '{interest['name']}'; examples {tried} also not found, skipped")
+            log("retry", f"Qloo didn't know '{interest['name']}'; tried {_names(tried)}, none found, so skipped")
 
     match = matcher.find_places(q, profile, resolved=resolved)
     if match.get("error"):
