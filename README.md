@@ -49,6 +49,33 @@ Qloo is the heart of Kindred. The LLM never chooses a place on its own.
 
 Things we learned about the API and handled in code: search is worldwide, so distance from the suburb is computed for every place; the radius filter isn't reliable, so distance limits are enforced locally; and category filters are loose, so every place's own category tags are checked.
 
+### One request, start to finish (redacted)
+
+Note: *"74, widowed last year, loved gardening and Fleetwood Mac, can't drive, lives in Marrickville."*
+
+1. **Read:** age band `55_and_older`, suburb `marrickville`, travel `bus` (5 km), interests *gardening* (hobby) and *Fleetwood Mac* (artist). No name or contact details are kept or sent.
+2. **Resolve:** `/v2/tags` for "gardening" returns the keyword tag `urn:tag:keyword:qloo:gardening`. `/search` for "Fleetwood Mac" with `types=urn:entity:artist` returns the band's entity; the exact name match is kept, near misses are rejected.
+3. **Ask for places:** one `/v2/insights` call per interest and place category, for example:
+
+   ```
+   filter.type=urn:entity:place
+   filter.tags=urn:tag:category:place:park
+   filter.location.query=marrickville, Sydney
+   signal.interests.tags=urn:tag:keyword:qloo:gardening
+   signal.demographics.age=55_and_older
+   take=15
+   ```
+4. **Check:** each returned place gets a distance from Marrickville and passes through the safety rules. In this example 16 alcohol focused, 12 loud, 1 not visitable and 1 too physical place were hidden.
+5. **Result:** Marrickville Park (1 km), *"popular with people who enjoy gardening and Fleetwood Mac; tagged Community gardening, which fits gardening"*, then Gough Whitlam Park, then Bourke Street Bakery, then the Addison Road Community Garden working bee.
+
+### What a Qloo result does and doesn't mean
+
+Qloo results describe **aggregate** taste affinities: "people who enjoy gardening and Fleetwood Mac also tend to enjoy this park". Kindred presents them that way and never as a prediction about the individual. Kindred never sends Qloo a name, contact details, health information or a location history; only interests, a suburb name and an age band. The person's needs (walking aids, not drinking) are handled by Kindred's own rules, not inferred from Qloo.
+
+### Qloo access
+
+Kindred calls the event's Qloo API (`hackathon.api.qloo.com`) directly from the server, using the same endpoints as the kit's `qloo api` route. The key lives only in a server environment variable, never in the repo or the browser. Every response is cached on the server to stay well inside the event quota, and retries are bounded.
+
 ## How the agent works
 
 ```mermaid
@@ -112,7 +139,7 @@ cp .env.example .env        # then add your Qloo and Groq keys
 uvicorn app.main:app --reload
 ```
 
-Open http://127.0.0.1:8000. Run the tests with `python -m pytest` (211 tests, all offline with fake Qloo and LLM clients). Try notes from the command line with `python try_agent.py`.
+Open http://127.0.0.1:8000. Run the tests with `python -m pytest` (214 tests, all offline with fake Qloo and LLM clients). Try notes from the command line with `python try_agent.py`.
 
 **Stack:** Python, FastAPI, Qloo Insights API, Groq (gpt-oss-120b with gpt-oss-20b as a backup), plain HTML and JavaScript, hosted on Render, tests on GitHub Actions.
 
@@ -131,7 +158,7 @@ app/
   main.py      web API
 static/        the web page
 eval/          Kindred vs plain LLM evaluation
-tests/         211 offline tests
+tests/         214 offline tests
 ```
 
 ## Limitations and next steps
