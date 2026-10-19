@@ -66,8 +66,8 @@ def test_too_far_picks_something_closer():
     steps = [{"week": 1, "place": {"id": "CC1", "name": "Far Community Hall", "category": "Community centre",
                                      "pressure": 3, "distance_km": 3.3}, "action": "a", "why": "w"}]
     res = agent.adapt(q, PROFILE, steps, 1, "not_yet", "too_far")
-    assert res["steps"][0]["place"]["distance_km"] < 3.3
-    assert res["profile"]["transport"] == "walking"
+    assert res["steps"][0]["place"]["distance_km"] < 3.1
+    assert res["profile"]["transport"] == PROFILE["transport"]  # how they travel is unchanged
 
 
 def test_not_ready_picks_gentler_place():
@@ -120,3 +120,31 @@ def test_api_adapt_round_trip():
     assert r.status_code == 400
     r = c.post("/api/adapt", json=dict(body, steps=[{"place": {"id": "x", "name": "y" * 30000}}]))
     assert r.status_code == 400 and r.json()["status"] == "too_long"
+
+
+def test_too_far_with_nothing_closer_keeps_profile_and_explains():
+    q = FakeQloo(by_category={"park": [place("P1", "Only Park", "park")]})
+    steps = [{"week": 1, "place": {"id": "P1", "name": "Only Park", "category": "Park", "pressure": 0,
+                                     "distance_km": 0.1}, "action": "a", "why": "w"}]
+    res = agent.adapt(q, PROFILE, steps, 1, "not_yet", "too_far")
+    assert res["steps"][0]["place"]["id"] == "P1"
+    assert res["profile"]["transport"] == PROFILE["transport"]
+    assert "already the nearest" in res["message"]
+
+
+def test_too_far_twice_never_shrinks_how_they_travel():
+    q = rich_qloo()
+    steps = [{"week": 1, "place": {"id": "CC1", "name": "Far Community Hall", "category": "Community centre",
+                                     "pressure": 3, "distance_km": 3.3}, "action": "a", "why": "w"}]
+    first = agent.adapt(q, PROFILE, steps, 1, "not_yet", "too_far")
+    second = agent.adapt(q, first["profile"], first["steps"], 1, "not_yet", "too_far")
+    assert second["profile"]["transport"] == PROFILE["transport"]
+
+
+def test_too_far_can_offer_a_quiet_library_instead_of_a_park():
+    q = FakeQloo(by_category={"park": [place("P9", "Far Park", "park", lat=-33.925, lon=151.156)],
+                              "library": [place("L1", "Near Library", "library", tags=["Quiet"])]})
+    steps = [{"week": 1, "place": {"id": "P9", "name": "Far Park", "category": "Park", "pressure": 0,
+                                     "distance_km": 1.6}, "action": "a", "why": "w"}]
+    res = agent.adapt(q, PROFILE, steps, 1, "not_yet", "too_far")
+    assert res["steps"][0]["place"]["name"] == "Near Library"

@@ -88,7 +88,7 @@ def run(note, q, llm, profile_override=None):
 
     resolved, unresolved = matcher.resolve_all(q, profile.get("interests", []))
     for i in resolved:
-        log("understand", f"'{i['label']}' -> Qloo {i['signal']} '{i['matched']}'")
+        log("understand", f"'{i['label']}' → Qloo {i['signal']} '{i['matched']}'")
     for interest in unresolved:
         if interest.get("kind") not in MEDIA_KINDS:
             log("retry", f"Qloo didn't know '{interest['name']}' as a hobby; skipped rather than guessed")
@@ -148,7 +148,7 @@ def run(note, q, llm, profile_override=None):
 
 
 # ---------- follow up: adapt one week after the worker reports back ----------
-TRAVEL_DOWN = {"car": "bus", "bus": "walking", "walking": "walking_short", "walking_short": "walking_short"}
+CLOSER_KM = 0.2  # "too far" needs somewhere clearly closer, not 50 metres closer
 REASONS = {
     "too_far": "it was too far",
     "too_busy": "it felt too busy or loud",
@@ -195,7 +195,9 @@ def adapt(q, profile, steps, week, outcome, reason=None):
     max_pressure = current.get("pressure", 2)
     avoid_category = None
     if reason == "too_far":
-        adjusted["transport"] = TRAVEL_DOWN.get(profile["transport"], "walking")
+        # How they travel hasn't changed; this place was just further than they managed.
+        # Look for somewhere clearly closer, allowing an equally quiet library or museum too.
+        max_pressure = max(max_pressure, 1)
     elif reason == "too_busy":
         adjusted["strict_calm"] = True
     elif reason == "not_ready":
@@ -212,7 +214,7 @@ def adapt(q, profile, steps, week, outcome, reason=None):
         if c.get("pressure", 2) > max_pressure or (avoid_category and c["category"] == avoid_category):
             return False
         if reason == "too_far" and current_km is not None and c.get("distance_km") is not None:
-            return c["distance_km"] < current_km
+            return c["distance_km"] <= current_km - CLOSER_KM
         return True
 
     found = matcher.find_places(q, adjusted, resolved=resolved, exclude_ids=exclude, limit=20)
@@ -227,9 +229,14 @@ def adapt(q, profile, steps, week, outcome, reason=None):
 
     if not options:
         log("adapt", "No better option found; plan kept")
-        return {"status": "ok", "steps": steps, "profile": adjusted, "trace": trace,
-                "message": (f"No better option than {current['name']} nearby yet. "
-                            "It may help to talk through what would make it easier.")}
+        if reason == "too_far":
+            hint = (f"{current['name']} is already the nearest calm place that fits. "
+                    "A lift, a companion for the first visit, or a shorter stay there may help.")
+        else:
+            hint = (f"No better option than {current['name']} nearby yet. "
+                    "It may help to talk through what would make it easier.")
+        # Nothing changed, so the person's details stay exactly as they were.
+        return {"status": "ok", "steps": steps, "profile": profile, "trace": trace, "message": hint}
 
     best = max(options, key=lambda c: c["score"])
     steps[week - 1] = {"week": week, "place": best, "action": f"Visit {best['name']} at a quiet time",
