@@ -59,11 +59,16 @@ def clean_note(note):
 def validate_profile(raw):
     raw = raw if isinstance(raw, dict) else {}
     interests = []
-    for i in raw.get("interests") or []:
+    items = raw.get("interests") or []
+    if isinstance(items, str):  # "gardening, Fleetwood Mac"
+        items = [x for x in re.split(r",|\band\b", items) if x.strip()]
+    for i in items if isinstance(items, list) else []:
+        if isinstance(i, str):  # a model sometimes returns plain names
+            i = {"name": i, "kind": "unknown"}
         if not isinstance(i, dict):
             continue
-        name = str(i.get("name", "")).strip()[:60]
-        kind = str(i.get("kind", "activity")).strip().lower()
+        name = str(i.get("name") or i.get("label") or i.get("interest") or "").strip()[:60]
+        kind = str(i.get("kind") or i.get("type") or "unknown").strip().lower()
         if name:
             interests.append({"name": name, "kind": kind if kind in KINDS else "activity"})
     age = raw.get("age_band")
@@ -228,6 +233,13 @@ def parse_note(llm, note):
         profile = validate_profile(llm.chat_json(SYSTEM, note))
     except Exception:
         profile, reader = rules_profile(note), "rules"
+    if reader == "model" and (not profile["interests"] or not profile["suburb"]):
+        # The model missed something the plain rules can still see: fill the gaps, never overwrite.
+        backup = rules_profile(note)
+        if not profile["interests"] and backup["interests"]:
+            profile["interests"], reader = backup["interests"], "model+rules"
+        if not profile["suburb"] and backup["suburb"]:
+            profile["suburb"] = backup["suburb"]
     if not profile["interests"]:
         return {"status": "no_interests", "profile": profile, "reader": reader}
     return {"status": "ok", "profile": profile, "reader": reader}

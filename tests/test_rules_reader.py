@@ -27,3 +27,38 @@ def test_suburb_is_never_an_interest():
 def test_needs_and_travel_are_not_interests():
     p = intake.rules_profile("72, Bondi, loves jazz, uses a walker, doesn't drink, takes the bus")
     assert [i["name"] for i in p["interests"]] == ["jazz"]
+
+
+from tests.conftest import FakeLLM
+
+
+def test_model_returning_plain_names_still_works():
+    out = intake.parse_note(FakeLLM({"suburb": "Glebe", "interests": ["gardening", "jazz"]}),
+                            "70, Glebe, loves gardening and jazz, takes the bus")
+    assert out["status"] == "ok" and [i["name"] for i in out["profile"]["interests"]] == ["gardening", "jazz"]
+
+
+def test_model_returning_a_string_of_interests_still_works():
+    out = intake.parse_note(FakeLLM({"suburb": "Glebe", "interests": "gardening, jazz"}),
+                            "70, Glebe, loves gardening and jazz, takes the bus")
+    assert [i["name"] for i in out["profile"]["interests"]] == ["gardening", "jazz"]
+
+
+def test_model_missing_interests_falls_back_to_rules():
+    out = intake.parse_note(FakeLLM({"suburb": "Kensington", "interests": []}),
+                            "Man in Kensington, 30, plays chess, walks")
+    assert out["status"] == "ok" and out["reader"] == "model+rules"
+    assert [i["name"] for i in out["profile"]["interests"]] == ["chess"]
+
+
+def test_model_missing_suburb_is_filled_from_rules():
+    out = intake.parse_note(FakeLLM({"interests": [{"name": "opera", "kind": "music"}]}),
+                            "Randwick, 80, interested in birds and opera")
+    assert out["profile"]["suburb"] == "Randwick"
+    assert [i["name"] for i in out["profile"]["interests"]] == ["opera"]  # model's answer is kept
+
+
+def test_truly_no_interest_still_asks_for_one():
+    out = intake.parse_note(FakeLLM({"suburb": "Glebe", "interests": []}),
+                            "70, lives alone in Glebe, takes the bus")
+    assert out["status"] == "no_interests"

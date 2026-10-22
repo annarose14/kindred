@@ -83,7 +83,8 @@ def run(note, q, llm, profile_override=None):
             return {"status": parsed["status"], "message": MESSAGES[parsed["status"]],
                     "profile": parsed["profile"], "trace": trace}
         profile = parsed["profile"]
-        how = " (language model unavailable, read with backup rules)" if parsed.get("reader") == "rules" else ""
+        how = {"rules": " (language model unavailable, read with backup rules)",
+               "model+rules": " (backup rules found interests the language model missed)"}.get(parsed.get("reader"), "")
         log("read_note", f"Found {len(profile['interests'])} interests in {profile['suburb']}{how}")
 
     resolved, unresolved = matcher.resolve_all(q, profile.get("interests", []))

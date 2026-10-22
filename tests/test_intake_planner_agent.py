@@ -34,7 +34,8 @@ def test_validate_profile_cleans_bad_values():
                                  "interests": [{"name": "x", "kind": "weird"}, "junk", {"name": ""}],
                                  "avoid_alcohol": None})
     assert p["age_band"] is None and p["transport"] == "bus"
-    assert p["interests"] == [{"name": "x", "kind": "activity"}]
+    # Plain names are kept (Qloo later confirms which are real); empty ones are dropped.
+    assert p["interests"] == [{"name": "x", "kind": "activity"}, {"name": "junk", "kind": "unknown"}]
     assert p["avoid_alcohol"] is True and p["prefers_calm"] is True
 
 
