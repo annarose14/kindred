@@ -27,8 +27,13 @@ MESSAGES = {
     "risk": ("This note mentions possible risk of harm. Kindred is not the right first step. "
              "Please follow your service's escalation process now."),
     "error": "The note couldn't be read just now. Please try again in a moment.",
-    "no_interests": "Kindred needs at least one thing the person enjoys (a hobby, band, film or book).",
-    "unknown_suburb": "That suburb isn't in the pilot area yet. Try an Inner West or eastern suburbs suburb.",
+    "no_interests": ("Kindred plans gentle first steps for someone who is lonely, so it needs a short note "
+                     "about the person: their suburb, how they get around, and at least one thing they love "
+                     "(a hobby, band, film, book or food). For example: \"70, Mascot, loves fried rice and "
+                     "Elvis, takes the bus.\""),
+    "unknown_suburb": ("That suburb isn't in the pilot area yet. Kindred covers inner Sydney: the Inner West, "
+                       "inner city, eastern suburbs and Mascot. For example Marrickville, Newtown, Glebe, "
+                       "Surry Hills, Randwick, Bondi or Mascot."),
     "no_interests_found": "Qloo didn't recognise those interests. Try naming a specific band, film or hobby.",
     "no_places": "No safe matches nearby. Try allowing a longer trip or adding another interest.",
 }

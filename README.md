@@ -15,7 +15,7 @@
 4. Open **How Kindred decided** to see every step the agent took: what it understood, what Qloo returned, which places it hid and why.
 5. Under week 1, press **Didn't happen** and pick a reason such as *too far*. Kindred replaces that week with something closer and tells you what changed.
 
-Or write your own note. Kindred works for 32 suburbs across Sydney's Inner West, inner city and eastern suburbs.
+Or write your own note. Kindred works for 48 suburbs across Sydney's Inner West, inner city, eastern suburbs and Mascot.
 
 ## The problem
 
@@ -139,7 +139,7 @@ cp .env.example .env        # then add your Qloo and Groq keys
 uvicorn app.main:app --reload
 ```
 
-Open http://127.0.0.1:8000. Run the tests with `python -m pytest` (214 tests, all offline with fake Qloo and LLM clients). Try notes from the command line with `python try_agent.py`.
+Open http://127.0.0.1:8000. Run the tests with `python -m pytest` (230 tests, all offline with fake Qloo and LLM clients). Try notes from the command line with `python try_agent.py`.
 
 **Stack:** Python, FastAPI, Qloo Insights API, Groq (gpt-oss-120b with gpt-oss-20b as a backup), plain HTML and JavaScript, hosted on Render, tests on GitHub Actions.
 
@@ -158,12 +158,12 @@ app/
   main.py      web API
 static/        the web page
 eval/          Kindred vs plain LLM evaluation
-tests/         214 offline tests
+tests/         230 offline tests
 ```
 
 ## Limitations and next steps
 
-* **Pilot area:** 32 Sydney suburbs. Adding a city means adding suburb coordinates and checking local groups.
+* **Pilot area:** 48 Sydney suburbs. Adding a city means adding suburb coordinates and checking local groups.
 * **Groups are hand checked.** Qloo knows places, not clubs, so the 14 groups come from council and library pages. A real deployment would connect to a local services directory.
 * **Qloo has fewer libraries and community centres** than cafés and parks in some suburbs, so some plans lean on cafés.
 * **The evaluation is small** (20 notes) and the name lookup misses some real places.

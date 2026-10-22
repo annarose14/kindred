@@ -62,3 +62,19 @@ def test_truly_no_interest_still_asks_for_one():
     out = intake.parse_note(FakeLLM({"suburb": "Glebe", "interests": []}),
                             "70, lives alone in Glebe, takes the bus")
     assert out["status"] == "no_interests"
+
+
+from app.agent import MESSAGES
+from app.suburbs import SUBURBS, find_suburb
+
+
+def test_new_suburbs_are_found_as_whole_words():
+    assert find_suburb("near Mascot Woolworths")[0] == "mascot"
+    assert find_suburb("Potts Point")[0] == "potts point"
+    assert find_suburb("loves the botanical garden, Marrickville")[0] == "marrickville"
+    assert len(SUBURBS) == 48
+
+
+def test_no_interest_message_explains_what_to_write():
+    msg = MESSAGES["no_interests"]
+    assert "suburb" in msg and "For example" in msg
