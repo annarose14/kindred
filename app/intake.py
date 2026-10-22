@@ -90,7 +90,7 @@ STOP_WORDS = ("lives", "living", "uses", "use ", "can ", "can't", "cannot", "doe
               "recently", "moved", "works", "widow", "retired", "years", "year old", "needs", "prefers",
               "avoids", "bus", "since", "lonely", "isolated", "recovering", "single", "limited",
               "quiet", "shy", "small places", "calm", "low", "independent")
-FILLER_START = re.compile(r"^(a|an|going to|watching|listening to|playing|reading|sing(ing)? in a|"
+FILLER_START = re.compile(r"^(a|an|going to|watching|listening to|playing|play|reading|sing(ing)? in a|"
                           r"to sing in a|to)\s+", re.I)
 LOWER_THE = re.compile(r"^the\s+(?=[a-z])")  # "the theatre" -> "theatre", but keep "The Crown"
 FILLER_END = re.compile(r"\s+(on tv|on the tv|books|novels|films|movies|music|songs|shows|a lot|"
@@ -133,7 +133,33 @@ def _transport(text):
     return "bus"
 
 
+# Everyday ways of saying "likes X", rewritten so one rule handles them all.
+PHRASES = [
+    (re.compile(r"\b(?:is |are )?interested in\b", re.I), "likes"),
+    (re.compile(r"\b(?:plays|played|reads|watches|watched|listens to|listened to|collects|follows)\b", re.I), "likes"),
+    (re.compile(r"\bpaints\b", re.I), "likes painting"),
+    (re.compile(r"\bsings\b", re.I), "likes singing"),
+    (re.compile(r"\bknits\b", re.I), "likes knitting"),
+    (re.compile(r"\bswims\b", re.I), "likes swimming"),
+    (re.compile(r"\bcooks\b", re.I), "likes cooking"),
+    (re.compile(r"\bbakes\b", re.I), "likes baking"),
+    (re.compile(r"\bdances\b", re.I), "likes dancing"),
+    (re.compile(r"\bdraws\b", re.I), "likes drawing"),
+    (re.compile(r"\bwrites\b", re.I), "likes writing"),
+    # "big Beyonce fan", "a huge Elvis fan" (but "fan of" is already handled)
+    (re.compile(r"\b(?:a\s+)?(?:big|huge|massive)?\s*([A-Z][\w'.]*(?:\s+[A-Z][\w'.]*)*)\s+fan\b(?!\s+of)"), r"likes \1"),
+]
+LEADING_TRIGGER = re.compile(r"^(?:loves?|loved|likes?|liked|enjoys?|enjoyed|adores?)\s+", re.I)
+
+
+def _is_suburb(part):
+    from app.suburbs import SUBURBS
+    return part.lower().strip() in SUBURBS
+
+
 def _interests(text):
+    for pattern, repl in PHRASES:
+        text = pattern.sub(repl, text)
     found, active = [], False
     for clause in re.split(r"[,.;]|\bbut\b", text):
         clause = clause.strip()
@@ -157,7 +183,9 @@ def _interests(text):
                 parts.append(raw[i])
                 i += 1
         for part in parts:
-            part = FILLER_START.sub("", part)
+            part = FILLER_START.sub("", LEADING_TRIGGER.sub("", part))
+            if _is_suburb(part):
+                continue
             part = FILLER_END.sub("", LOWER_THE.sub("", part)).strip(" '\"")
             if 2 < len(part) <= 40 and len(part.split()) <= 5 and not any(w in part.lower() for w in STOP_WORDS):
                 found.append({"name": part, "kind": "unknown"})
